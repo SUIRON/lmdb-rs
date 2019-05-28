@@ -1,5 +1,3 @@
-#![allow(non_upper_case_globals)]
-
 use libc::{c_int, c_uint, };
 use ffi::{self, MDB_val};
 use traits::{ToMdbValue, FromMdbValue};
@@ -15,16 +13,16 @@ bitflags! {
         #[doc="Keys are strings to be compared in reverse order, from the"]
         #[doc=" end of the strings to the beginning. By default, Keys are"]
         #[doc=" treated as strings and compared from beginning to end."]
-        const DbReverseKey   = ffi::MDB_REVERSEKEY,
+        const DB_REVERSE_KEY   = ffi::MDB_REVERSEKEY,
         #[doc="Duplicate keys may be used in the database. (Or, from another"]
         #[doc="perspective, keys may have multiple data items, stored in sorted"]
         #[doc="order.) By default keys must be unique and may have only a"]
         #[doc="single data item."]
-        const DbAllowDups    = ffi::MDB_DUPSORT,
+        const DB_ALLOW_DUPS    = ffi::MDB_DUPSORT,
         #[doc="Keys are binary integers in native byte order. Setting this"]
         #[doc="option requires all keys to be the same size, typically"]
         #[doc="sizeof(int) or sizeof(size_t)."]
-        const DbIntKey       = ffi::MDB_INTEGERKEY,
+        const DB_INT_KEY       = ffi::MDB_INTEGERKEY,
         #[doc="This flag may only be used in combination with"]
         #[doc="ffi::MDB_DUPSORT. This option tells the library that the data"]
         #[doc="items for this database are all the same size, which allows"]
@@ -32,17 +30,17 @@ bitflags! {
         #[doc="items are the same size, the ffi::MDB_GET_MULTIPLE and"]
         #[doc="ffi::MDB_NEXT_MULTIPLE cursor operations may be used to retrieve"]
         #[doc="multiple items at once."]
-        const DbDupFixed     = ffi::MDB_DUPFIXED,
+        const DB_DUP_FIXED     = ffi::MDB_DUPFIXED,
         #[doc="This option specifies that duplicate data items are also"]
         #[doc="integers, and should be sorted as such."]
-        const DbAllowIntDups = ffi::MDB_INTEGERDUP,
+        const DB_ALLOW_INT_DUPS = ffi::MDB_INTEGERDUP,
         #[doc="This option specifies that duplicate data items should be"]
         #[doc=" compared as strings in reverse order."]
-        const DbReversedDups = ffi::MDB_REVERSEDUP,
+        const DB_REVERSE_DUPS = ffi::MDB_REVERSEDUP,
         #[doc="Create the named database if it doesn't exist. This option"]
         #[doc=" is not allowed in a read-only transaction or a read-only"]
         #[doc=" environment."]
-        const DbCreate       = ffi::MDB_CREATE,
+        const DB_CREATE       = ffi::MDB_CREATE,
     }
 }
 
@@ -208,9 +206,6 @@ impl<'a> Database<'a> {
         })
     }
 }
-
-
-
 
 #[allow(dead_code)]
 #[derive(Copy, Clone, Debug)]

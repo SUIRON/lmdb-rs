@@ -1,5 +1,3 @@
-#![allow(non_upper_case_globals)]
-
 use libc::{c_int, c_uint, size_t};
 use std;
 use std::borrow::ToOwned;
@@ -15,7 +13,7 @@ use ffi::{self};
 
 use crate::core::{ MdbError, MdbResult };
 use crate::transaction::{ NativeTransaction, Transaction, ReadonlyTransaction };
-use crate::database::{ DbFlags, DbCreate, DbHandle };
+use crate::database::{ DbFlags, DB_CREATE, DbHandle };
 
 bitflags! {
     #[doc = "A set of environment flags which could be changed after opening"]
@@ -37,7 +35,7 @@ bitflags! {
         to disk, unless mdb_env_sync() is called. (MDB_MAPASYNC |
         MDB_WRITEMAP) may be preferable. This flag may be changed at
         any time using mdb_env_set_flags()."]
-        const EnvNoSync      = ffi::MDB_NOSYNC,
+        const ENV_NO_SYNC      = ffi::MDB_NOSYNC,
 
         #[doc="Flush system buffers to disk only once per transaction,
         omit the metadata flush. Defer that until the system flushes
@@ -48,7 +46,7 @@ bitflags! {
         consistency, isolation) but not D (durability) database
         property. This flag may be changed at any time using
         mdb_env_set_flags()."]
-        const EnvNoMetaSync  = ffi::MDB_NOMETASYNC,
+        const ENV_NO_META_SYNC  = ffi::MDB_NOMETASYNC,
 
         #[doc="When using MDB_WRITEMAP, use asynchronous flushes to
         disk. As with MDB_NOSYNC, a system crash can then corrupt the
@@ -56,7 +54,7 @@ bitflags! {
         mdb_env_sync() ensures on-disk database integrity until next
         commit. This flag may be changed at any time using
         mdb_env_set_flags()."]
-        const EnvMapAsync    = ffi::MDB_MAPASYNC,
+        const ENV_MAP_ASYNC    = ffi::MDB_MAPASYNC,
 
         #[doc="Don't initialize malloc'd memory before writing to
         unused spaces in the data file. By default, memory for pages
@@ -78,7 +76,7 @@ bitflags! {
         to overwrite all of the memory that was reserved in that
         case. This flag may be changed at any time using
         mdb_env_set_flags()."]
-        const EnvNoMemInit   = ffi::MDB_NOMEMINIT
+        const ENV_NO_MEM_INIT   = ffi::MDB_NOMEMINIT
     }
 }
 
@@ -93,13 +91,13 @@ bitflags! {
         #[doc=" in the database will be constant across multiple invocations. This "]
         #[doc="option may not always work, depending on how the operating system has"]
         #[doc=" allocated memory to shared libraries and other uses. The feature is highly experimental."]
-        const EnvCreateFixedMap    = ffi::MDB_FIXEDMAP,
+        const ENV_CREATE_FIXED_MAP    = ffi::MDB_FIXEDMAP,
         #[doc="By default, LMDB creates its environment in a directory whose"]
         #[doc=" pathname is given in path, and creates its data and lock files"]
         #[doc=" under that directory. With this option, path is used as-is"]
         #[doc=" for the database main data file. The database lock file is"]
         #[doc=" the path with \"-lock\" appended."]
-        const EnvCreateNoSubDir    = ffi::MDB_NOSUBDIR,
+        const ENV_CREATE_NO_SUB_DIR    = ffi::MDB_NOSUBDIR,
         #[doc="Don't flush system buffers to disk when committing a"]
         #[doc=" transaction. This optimization means a system crash can corrupt"]
         #[doc=" the database or lose the last transactions if buffers are not"]
@@ -115,11 +113,11 @@ bitflags! {
         #[doc=" disk, unless mdb_env_sync() is called."]
         #[doc=" (MDB_MAPASYNC | MDB_WRITEMAP) may be preferable. This flag"]
         #[doc=" may be changed at any time using mdb_env_set_flags()."]
-        const EnvCreateNoSync      = ffi::MDB_NOSYNC,
+        const ENV_CREATE_NO_SYNC      = ffi::MDB_NOSYNC,
         #[doc="Open the environment in read-only mode. No write operations"]
         #[doc=" will be allowed. LMDB will still modify the lock file - except"]
         #[doc=" on read-only filesystems, where LMDB does not use locks."]
-        const EnvCreateReadOnly    = ffi::MDB_RDONLY,
+        const ENV_CREATE_READONLY    = ffi::MDB_RDONLY,
         #[doc="Flush system buffers to disk only once per transaction,"]
         #[doc=" omit the metadata flush. Defer that until the system flushes"]
         #[doc=" files to disk, or next non-MDB_RDONLY commit or mdb_env_sync()."]
@@ -128,20 +126,20 @@ bitflags! {
         #[doc=" preserves the ACI (atomicity, consistency, isolation) but"]
         #[doc=" not D (durability) database property. This flag may be changed"]
         #[doc=" at any time using mdb_env_set_flags()."]
-        const EnvCreateNoMetaSync  = ffi::MDB_NOMETASYNC,
+        const ENV_CREATE_NO_META_SYNC  = ffi::MDB_NOMETASYNC,
         #[doc="Use a writeable memory map unless MDB_RDONLY is set. This is"]
         #[doc="faster and uses fewer mallocs, but loses protection from"]
         #[doc="application bugs like wild pointer writes and other bad updates"]
         #[doc="into the database. Incompatible with nested"]
         #[doc="transactions. Processes with and without MDB_WRITEMAP on the"]
         #[doc="same environment do not cooperate well."]
-        const EnvCreateWriteMap    = ffi::MDB_WRITEMAP,
+        const ENV_CREATE_WRITE_MAP    = ffi::MDB_WRITEMAP,
         #[doc="When using MDB_WRITEMAP, use asynchronous flushes to disk. As"]
         #[doc="with MDB_NOSYNC, a system crash can then corrupt the database or"]
         #[doc="lose the last transactions. Calling mdb_env_sync() ensures"]
         #[doc="on-disk database integrity until next commit. This flag may be"]
         #[doc="changed at any time using mdb_env_set_flags()."]
-        const EnvCreataMapAsync    = ffi::MDB_MAPASYNC,
+        const ENV_CREATE_MAP_ASYNC    = ffi::MDB_MAPASYNC,
         #[doc="Don't use Thread-Local Storage. Tie reader locktable slots to"]
         #[doc="ffi::MDB_txn objects instead of to threads. I.e. mdb_txn_reset()"]
         #[doc="keeps the slot reseved for the ffi::MDB_txn object. A thread may"]
@@ -151,20 +149,20 @@ bitflags! {
         #[doc="option. Such an application must also serialize the write"]
         #[doc="transactions in an OS thread, since LMDB's write locking is"]
         #[doc="unaware of the user threads."]
-        const EnvCreateNoTls       = ffi::MDB_NOTLS,
+        const ENV_CREATE_NO_TLS       = ffi::MDB_NOTLS,
         #[doc="Don't do any locking. If concurrent access is anticipated, the"]
         #[doc="caller must manage all concurrency itself. For proper operation"]
         #[doc="the caller must enforce single-writer semantics, and must ensure"]
         #[doc="that no readers are using old transactions while a writer is"]
         #[doc="active. The simplest approach is to use an exclusive lock so"]
         #[doc="that no readers may be active at all when a writer begins. "]
-        const EnvCreateNoLock      = ffi::MDB_NOLOCK,
+        const ENV_CREATE_NO_LOCK      = ffi::MDB_NOLOCK,
         #[doc="Turn off readahead. Most operating systems perform readahead on"]
         #[doc="read requests by default. This option turns it off if the OS"]
         #[doc="supports it. Turning it off may help random read performance"]
         #[doc="when the DB is larger than RAM and system RAM is full. The"]
         #[doc="option is not implemented on Windows."]
-        const EnvCreateNoReadAhead = ffi::MDB_NORDAHEAD,
+        const ENV_CREATE_NO_READ_AHEAD = ffi::MDB_NORDAHEAD,
         #[doc="Don't initialize malloc'd memory before writing to unused spaces"]
         #[doc="in the data file. By default, memory for pages written to the"]
         #[doc="data file is obtained using malloc. While these pages may be"]
@@ -184,7 +182,7 @@ bitflags! {
         #[doc="MDB_RESERVE is used; the caller is expected to overwrite all of"]
         #[doc="the memory that was reserved in that case. This flag may be"]
         #[doc="changed at any time using mdb_env_set_flags()."]
-        const EnvCreateNoMemInit   = ffi::MDB_NOMEMINIT
+        const ENV_CREATE_NO_MEM_INIT   = ffi::MDB_NOMEMINIT
     }
 }
 
@@ -246,7 +244,7 @@ impl EnvBuilder {
 
     /// Opens environment in specified path
     pub fn open<P: AsRef<Path>>(self, path: P, perms: u32) -> MdbResult<Environment> {
-        let changeable_flags: EnvCreateFlags = EnvCreataMapAsync | EnvCreateNoMemInit | EnvCreateNoSync | EnvCreateNoMetaSync;
+        let changeable_flags: EnvCreateFlags = ENV_CREATE_MAP_ASYNC | ENV_CREATE_NO_MEM_INIT | ENV_CREATE_NO_SYNC | ENV_CREATE_NO_META_SYNC;
 
         let env: *mut ffi::MDB_env = ptr::null_mut();
         unsafe {
@@ -273,7 +271,7 @@ impl EnvBuilder {
             let _ = try!(EnvBuilder::check_path(&path, self.flags));
         }
 
-        let is_readonly = self.flags.contains(EnvCreateReadOnly);
+        let is_readonly = self.flags.contains(ENV_CREATE_READONLY);
 
         let res = unsafe {
             // FIXME: revert back once `convert` is stable
@@ -301,7 +299,7 @@ impl EnvBuilder {
     fn check_path<P: AsRef<Path>>(path: P, flags: EnvCreateFlags) -> MdbResult<()> {
         use std::{fs, io};
 
-        if flags.contains(EnvCreateNoSubDir) {
+        if flags.contains(ENV_CREATE_NO_SUB_DIR) {
             // FIXME: check parent dir existence/absence
             warn!("checking for path in NoSubDir mode isn't implemented yet");
             return Ok(());
@@ -505,7 +503,7 @@ impl Environment {
                     try!(self.create_transaction(None, txflags))
                 };
                 let opt_name = if db_name.len() > 0 {Some(db_name)} else {None};
-                let flags = if force_creation {flags | DbCreate} else {flags - DbCreate};
+                let flags = if force_creation {flags | DB_CREATE} else {flags - DB_CREATE};
 
                 let mut db: ffi::MDB_dbi = 0;
                 let db_res = match opt_name {

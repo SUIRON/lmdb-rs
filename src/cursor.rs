@@ -1,5 +1,3 @@
-#![allow(non_upper_case_globals)]
-
 use libc::{c_uint, size_t};
 use std;
 use std::cmp::{Ordering};

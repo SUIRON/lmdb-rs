@@ -38,8 +38,6 @@
 //! # Example
 //!
 
-#![allow(non_upper_case_globals)]
-
 use libc::{c_int, size_t, c_void};
 use std;
 use std::error::Error;
