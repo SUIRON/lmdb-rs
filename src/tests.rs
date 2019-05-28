@@ -1,12 +1,11 @@
 use std::env;
 use std::fs::{self};
 use std::path::{PathBuf};
-use std::sync::atomic::{AtomicUsize, ATOMIC_USIZE_INIT, Ordering};
+use std::sync::atomic::{AtomicUsize, Ordering};
 use std::sync::{Once, ONCE_INIT};
 use std::thread;
 
 use libc::c_int;
-
 
 use core::{MdbValue, KeyExists, MdbError};
 use environment::{self, EnvBuilder, EnvNoMemInit, EnvNoMetaSync };
@@ -16,7 +15,7 @@ use traits::FromMdbValue;
 
 const USER_DIR: u32 = 0o777;
 static TEST_ROOT_DIR: &'static str = "test-dbs";
-static NEXT_ID: AtomicUsize = ATOMIC_USIZE_INIT;
+static NEXT_ID: AtomicUsize = AtomicUsize::new(0);
 static INIT_DIR_ONCE: Once = ONCE_INIT;
 
 fn global_root() -> PathBuf {
