@@ -6,8 +6,8 @@ fn main() {
     let env = EnvBuilder::new().open("test-lmdb", 0o777).unwrap();
 
     let db_handle = env.get_default_db(DbFlags::empty()).unwrap();
-    let txn = env.new_transaction().unwrap();
     {
+        let txn = env.new_transaction().unwrap();
         let db = txn.bind(&db_handle); // get a database bound to this transaction
 
         let pairs = vec![("Albert", "Einstein",),
@@ -15,20 +15,20 @@ fn main() {
                          ("Jack", "Daniels")];
 
         for &(name, surname) in pairs.iter() {
-            db.set(&surname, &name).unwrap();
+            db.set(&surname, &name, &txn).unwrap();
+        }
+        // Note: `commit` is choosen to be explicit as
+        // in case of failure it is responsibility of
+        // the client to handle the error
+        match txn.commit() {
+            Err(_) => panic!("failed to commit!"),
+            Ok(_) => ()
         }
     }
 
-    // Note: `commit` is choosen to be explicit as
-    // in case of failure it is responsibility of
-    // the client to handle the error
-    match txn.commit() {
-        Err(_) => panic!("failed to commit!"),
-        Ok(_) => ()
-    }
 
     let reader = env.get_reader().unwrap();
     let db = reader.bind(&db_handle);
-    let name = db.get::<&str>(&"Smith").unwrap();
+    let name = db.get::<&str>(&"Smith", &reader).unwrap();
     println!("It's {} Smith", name);
 }

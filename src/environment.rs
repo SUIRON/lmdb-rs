@@ -12,6 +12,7 @@ use std::sync::{Arc, Mutex};
 use ffi::{self};
 
 use crate::core::{ MdbError, MdbResult };
+use crate::database::Database;
 use crate::transaction::{ NativeTransaction, Transaction, ReadonlyTransaction };
 use crate::database::{ DbFlags, DB_CREATE, DbHandle };
 
@@ -533,6 +534,12 @@ impl Environment {
     pub fn get_db(& self, db_name: &str, flags: DbFlags) -> MdbResult<DbHandle> {
         let db = try!(self._open_db(db_name, flags, false));
         Ok(DbHandle {handle: db, flags: flags})
+    }
+
+    pub fn new_db(&self, db_name: &str, flags: DbFlags) -> MdbResult<Database> {
+        let db = try!(self._open_db(db_name, flags, true));
+        //let handle = DbHandle {handle: db, flags: flags};
+        Ok(Database::new_with_handle(db))
     }
 
     /// Opens or creates a DB

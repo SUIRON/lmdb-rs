@@ -74,9 +74,9 @@ fn test_environment() {
     let key = "hello";
     let value = "world";
 
-    db.set(&key, &value).unwrap();
+    db.set(&key, &value, &txn).unwrap();
 
-    let v = db.get::<&str>(&key).unwrap();
+    let v = db.get::<&str>(&key, &txn).unwrap();
     assert!(v == value, "Written {} and read {}", &value, &v);
 }
 
@@ -95,18 +95,18 @@ fn test_single_values() {
     let test_data1 = "value1";
     let test_data2 = "value2";
 
-    assert!(db.get::<()>(&test_key1).is_err(), "Key shouldn't exist yet");
+    assert!(db.get::<()>(&test_key1, &txn).is_err(), "Key shouldn't exist yet");
 
-    assert!(db.set(&test_key1, &test_data1).is_ok());
-    let v = db.get::<&str>(&test_key1).unwrap();
+    assert!(db.set(&test_key1, &test_data1, &txn).is_ok());
+    let v = db.get::<&str>(&test_key1, &txn).unwrap();
     assert!(v == test_data1, "Data written differs from data read");
 
-    assert!(db.set(&test_key1, &test_data2).is_ok());
-    let v = db.get::<&str>(&test_key1).unwrap();
+    assert!(db.set(&test_key1, &test_data2, &txn).is_ok());
+    let v = db.get::<&str>(&test_key1, &txn).unwrap();
     assert!(v == test_data2, "Data written differs from data read");
 
-    assert!(db.del(&test_key1).is_ok());
-    assert!(db.get::<()>(&test_key1).is_err(), "Key should be deleted");
+    assert!(db.del(&test_key1, &txn).is_ok());
+    assert!(db.get::<()>(&test_key1, &txn).is_err(), "Key should be deleted");
 }
 
 #[test]
@@ -124,23 +124,23 @@ fn test_multiple_values() {
     let test_data1 = "value1";
     let test_data2 = "value2";
 
-    assert!(db.get::<()>(&test_key1).is_err(), "Key shouldn't exist yet");
+    assert!(db.get::<()>(&test_key1, &txn).is_err(), "Key shouldn't exist yet");
 
-    assert!(db.set(&test_key1, &test_data1).is_ok());
-    let v = db.get::<&str>(&test_key1).unwrap();
+    assert!(db.set(&test_key1, &test_data1, &txn).is_ok());
+    let v = db.get::<&str>(&test_key1, &txn).unwrap();
     assert!(v == test_data1, "Data written differs from data read");
 
-    assert!(db.set(&test_key1, &test_data2).is_ok());
-    let v = db.get::<&str>(&test_key1).unwrap();
+    assert!(db.set(&test_key1, &test_data2, &txn).is_ok());
+    let v = db.get::<&str>(&test_key1, &txn).unwrap();
     assert!(v == test_data1, "It should still return first value");
 
-    assert!(db.del_item(&test_key1, &test_data1).is_ok());
+    assert!(db.del_item(&test_key1, &test_data1, &txn).is_ok());
 
-    let v = db.get::<&str>(&test_key1).unwrap();
+    let v = db.get::<&str>(&test_key1, &txn).unwrap();
     assert!(v == test_data2, "It should return second value");
-    assert!(db.del(&test_key1).is_ok());
+    assert!(db.del(&test_key1, &txn).is_ok());
 
-    assert!(db.get::<()>(&test_key1).is_err(), "Key shouldn't exist anymore!");
+    assert!(db.get::<()>(&test_key1, &txn).is_err(), "Key shouldn't exist anymore!");
 }
 
 #[test]
@@ -150,30 +150,31 @@ fn test_append_duplicate() {
         .open(&next_path(), USER_DIR)
         .unwrap();
 
-    let db = env.get_default_db(database::DB_ALLOW_DUPS).unwrap();
-    let txn = env.new_transaction().unwrap();
-    let db = txn.bind(&db);
+    let db = env.new_db("", database::DB_ALLOW_DUPS).unwrap();
+    {let txn = env.new_transaction().unwrap();
+    //let db = txn.bind(&db);
 
     let test_key1 = "key1";
     let test_data1 = "value1";
     let test_data2 = "value2";
 
-    assert!(db.append(&test_key1, &test_data1).is_ok());
-    let v = db.get::<&str>(&test_key1).unwrap();
+    assert!(db.append(&test_key1, &test_data1, &txn).is_ok());
+    let v = db.get::<&str>(&test_key1, &txn).unwrap();
     assert!(v == test_data1, "Data written differs from data read");
 
-    assert!(db.append_duplicate(&test_key1, &test_data2).is_ok());
-    let v = db.get::<&str>(&test_key1).unwrap();
+    assert!(db.append_duplicate(&test_key1, &test_data2, &txn).is_ok());
+    let v = db.get::<&str>(&test_key1, &txn).unwrap();
     assert!(v == test_data1, "It should still return first value");
 
-    assert!(db.del_item(&test_key1, &test_data1).is_ok());
+    assert!(db.del_item(&test_key1, &test_data1, &txn).is_ok());
 
-    let v = db.get::<&str>(&test_key1).unwrap();
+    let v = db.get::<&str>(&test_key1, &txn).unwrap();
     assert!(v == test_data2, "It should return second value");
 
-    match db.append_duplicate(&test_key1, &test_data1).err().unwrap() {
+    match db.append_duplicate(&test_key1, &test_data1, &txn).err().unwrap() {
         KeyExists => (),
         _ => panic!("Expected KeyExists error")
+    }
     }
 }
 
@@ -184,26 +185,26 @@ fn test_insert_values() {
         .open(&next_path(), USER_DIR)
         .unwrap();
 
-    let db = env.get_default_db(DbFlags::empty()).unwrap();
-    let txn = env.new_transaction().unwrap();
-    let db = txn.bind(&db);
+    //let db = env.get_default_db(DbFlags::empty()).unwrap();
+    let db = env.new_db("", DbFlags::empty()).unwrap();
+    {let txn = env.new_transaction().unwrap();
 
     let test_key1 = "key1";
     let test_data1 = "value1";
     let test_data2 = "value2";
 
-    assert!(db.get::<()>(&test_key1).is_err(), "Key shouldn't exist yet");
+    assert!(db.get::<()>(&test_key1, &txn).is_err(), "Key shouldn't exist yet");
 
-    assert!(db.set(&test_key1, &test_data1).is_ok());
-    let v = db.get::<&str>(&test_key1).unwrap();
+    assert!(db.set(&test_key1, &test_data1, &txn).is_ok());
+    let v = db.get::<&str>(&test_key1, &txn).unwrap();
     assert!(v == test_data1, "Data written differs from data read");
 
-    assert!(db.insert(&test_key1, &test_data2).is_err(), "Inserting should fail if key exists");
+    assert!(db.insert(&test_key1, &test_data2, &txn).is_err(), "Inserting should fail if key exists");
 
-    assert!(db.del(&test_key1).is_ok());
-    assert!(db.get::<()>(&test_key1).is_err(), "Key should be deleted");
+    assert!(db.del(&test_key1, &txn).is_ok());
+    assert!(db.get::<()>(&test_key1, &txn).is_err(), "Key should be deleted");
 
-    assert!(db.insert(&test_key1, &test_data2).is_ok(), "Inserting should succeed");
+    assert!(db.insert(&test_key1, &test_data2, &txn).is_ok(), "Inserting should succeed");}
 }
 
 #[test]
@@ -226,7 +227,7 @@ fn test_resize_map() {
         {
             let db = txn.bind(&db);
             let test_key = format!("key_{}", key_idx);
-            try!(db.set(&test_key, &(&test_data[..])));
+            try!(db.set(&test_key, &(&test_data[..]), &txn));
         }
         key_idx += 1;
         txn.commit()
@@ -248,7 +249,7 @@ fn test_resize_map() {
     {
         let db = txn.bind(&db);
         let test_key = "different_key";
-        assert!(db.set(&test_key, &(&test_data[..])).is_ok(), "set after resize failed");
+        assert!(db.set(&test_key, &(&test_data[..]), &txn).is_ok(), "set after resize failed");
     }
     assert!(txn.commit().is_ok(), "Commit failed after resizing map");
 }
@@ -276,10 +277,10 @@ fn test_stat() {
         {
             let db = tx.bind(&db);
             for &(k, v) in ds {
-                assert!(db.set(&k, &v).is_ok());
+                assert!(db.set(&k, &v, &tx).is_ok());
             }
             // ~ verify the expected number of entries (key/value pairs) in the db
-            let stat = db.stat().unwrap();
+            let stat = db.stat(&tx).unwrap();
             assert_eq!(ds.len() as usize, stat.ms_entries);
         }
         tx.commit().unwrap();
@@ -308,14 +309,14 @@ fn test_cursors() {
     let test_key2 = "key2";
     let test_values: Vec<&str> = vec!("value1", "value2", "value3", "value4");
 
-    assert!(db.get::<()>(&test_key1).is_err(), "Key shouldn't exist yet");
+    assert!(db.get::<()>(&test_key1, &txn).is_err(), "Key shouldn't exist yet");
 
     for t in test_values.iter() {
-        let _ = db.set(&test_key1, t);
-        let _ = db.set(&test_key2, t);
+        let _ = db.set(&test_key1, t, &txn);
+        let _ = db.set(&test_key2, t, &txn);
     }
 
-    let mut cursor = db.new_cursor().unwrap();
+    let mut cursor = db.new_cursor(&txn).unwrap();
     assert!(cursor.to_first().is_ok());
 
     assert!(cursor.to_key(&test_key1).is_ok());
@@ -355,12 +356,12 @@ fn test_cursor_item_manip() {
 
     let test_key1 = "key1";
 
-    assert!(db.set(&test_key1, &3u64).is_ok());
+    assert!(db.set(&test_key1, &3u64, &txn).is_ok());
 
-    let mut cursor = db.new_cursor().unwrap();
+    let mut cursor = db.new_cursor(&txn).unwrap();
     assert!(cursor.to_key(&test_key1).is_ok());
 
-    let values: Vec<u64> = db.item_iter(&test_key1).unwrap()
+    let values: Vec<u64> = db.item_iter(&test_key1, &txn).unwrap()
         .map(|cv| cv.get_value::<u64>())
         .collect();
     assert_eq!(values, vec![3u64]);
@@ -368,13 +369,13 @@ fn test_cursor_item_manip() {
     assert!(cursor.add_item(&4u64).is_ok());
     assert!(cursor.add_item(&5u64).is_ok());
 
-    let values: Vec<u64> = db.item_iter(&test_key1).unwrap()
+    let values: Vec<u64> = db.item_iter(&test_key1, &txn).unwrap()
         .map(|cv| cv.get_value::<u64>())
         .collect();
     assert_eq!(values, vec![3u64, 4, 5]);
 
     assert!(cursor.replace(&6u64).is_ok());
-    let values: Vec<u64> = db.item_iter(&test_key1).unwrap()
+    let values: Vec<u64> = db.item_iter(&test_key1, &txn).unwrap()
         .map(|cv| cv.get_value::<u64>())
         .collect();
 
@@ -402,19 +403,19 @@ fn test_item_iter() {
     let test_key2 = "key2";
     let test_key3 = "key3";
 
-    assert!(db.set(&test_key1, &test_data1).is_ok());
-    assert!(db.set(&test_key1, &test_data2).is_ok());
-    assert!(db.set(&test_key2, &test_data1).is_ok());
+    assert!(db.set(&test_key1, &test_data1, &txn).is_ok());
+    assert!(db.set(&test_key1, &test_data2, &txn).is_ok());
+    assert!(db.set(&test_key2, &test_data1, &txn).is_ok());
 
-    let iter = db.item_iter(&test_key1).unwrap();
+    let iter = db.item_iter(&test_key1, &txn).unwrap();
     let values: Vec<String> = iter.map(|cv| cv.get_value::<String>()).collect();
     assert_eq!(as_slices(&values), vec![test_data1, test_data2]);
 
-    let iter = db.item_iter(&test_key2).unwrap();
+    let iter = db.item_iter(&test_key2, &txn).unwrap();
     let values: Vec<String> = iter.map(|cv| cv.get_value::<String>()).collect();
     assert_eq!(as_slices(&values), vec![test_data1]);
 
-    let iter = db.item_iter(&test_key3).unwrap();
+    let iter = db.item_iter(&test_key3, &txn).unwrap();
     let values: Vec<String> = iter.map(|cv| cv.get_value::<String>()).collect();
     assert_eq!(values.len(), 0);
 }
@@ -451,7 +452,7 @@ fn test_cursor_in_txns() {
         {
             let db = txn.bind(&db);
 
-            let cursor = db.new_cursor();
+            let cursor = db.new_cursor(&txn);
             assert!(cursor.is_ok());
         }
         assert!(txn.commit().is_ok());
@@ -464,7 +465,7 @@ fn test_cursor_in_txns() {
         {
             let db = txn.bind(&db);
 
-            let cursor = db.new_cursor();
+            let cursor = db.new_cursor(&txn);
             assert!(cursor.is_ok());
         }
         assert!(txn.commit().is_ok());
@@ -487,7 +488,7 @@ fn test_multithread_env() {
         let txn = shared_env.new_transaction().unwrap();
         {
             let db = txn.bind(&db);
-            assert!(db.set(&key, &value).is_ok());
+            assert!(db.set(&key, &value, &txn).is_ok());
         }
         assert!(txn.commit().is_ok());
     }).join();
@@ -495,7 +496,7 @@ fn test_multithread_env() {
     let db = env.create_db("test1", DbFlags::empty()).unwrap();
     let txn = env.get_reader().unwrap();
     let db = txn.bind(&db);
-    let value2: String = db.get(&key).unwrap();
+    let value2: String = db.get(&key, &txn).unwrap();
     assert_eq!(value, value2);
 }
 
@@ -513,7 +514,7 @@ fn test_keyrange_to() {
     {
         let db = txn.bind(&db);
         for (k, v) in keys.iter().zip(values.iter()) {
-            assert!(db.set(k, v).is_ok());
+            assert!(db.set(k, v, &txn).is_ok());
         }
     }
     assert!(txn.commit().is_ok());
@@ -525,7 +526,7 @@ fn test_keyrange_to() {
         let last_idx = keys.len() - 1;
         let last_key: u64 = keys[last_idx];
         // last key is excluded
-        let iter = db.keyrange_to(&last_key).unwrap();
+        let iter = db.keyrange_to(&last_key, &txn).unwrap();
 
         let res: Vec<_> = iter.map(|cv| cv.get_value::<u64>()).collect();
         assert_eq!(res, &values[..last_idx]);
@@ -544,7 +545,7 @@ fn test_keyrange_to_init_cursor() {
     {
         let db = txn.bind(&db);
         for &(k, v) in recs.iter() {
-            assert!(db.set(&k, &v).is_ok());
+            assert!(db.set(&k, &v, &txn).is_ok());
         }
     }
     assert!(txn.commit().is_ok());
@@ -555,7 +556,7 @@ fn test_keyrange_to_init_cursor() {
 
         // last key is excluded
         let upper_bound: u64 = 1;
-        let iter = db.keyrange_to(&upper_bound).unwrap();
+        let iter = db.keyrange_to(&upper_bound, &txn).unwrap();
 
         let res: Vec<_> = iter.map(|cv| cv.get_value::<u64>()).collect();
         assert_eq!(res, &[]);
@@ -576,7 +577,7 @@ fn test_keyrange_from() {
     {
         let db = txn.bind(&db);
         for (k, v) in keys.iter().zip(values.iter()) {
-            assert!(db.set(k, v).is_ok());
+            assert!(db.set(k, v, &txn).is_ok());
         }
     }
     assert!(txn.commit().is_ok());
@@ -587,7 +588,7 @@ fn test_keyrange_from() {
 
         let start_idx = 1; // second key
         let last_key: u64 = keys[start_idx];
-        let iter = db.keyrange_from(&last_key).unwrap();
+        let iter = db.keyrange_from(&last_key, &txn).unwrap();
 
         let res: Vec<_> = iter.map(|cv| cv.get_value::<u64>()).collect();
         assert_eq!(res, &values[start_idx..]);
@@ -606,7 +607,7 @@ fn test_keyrange_from_init_cursor() {
     {
         let db = txn.bind(&db);
         for &(k, v) in recs.iter() {
-            assert!(db.set(&k, &v).is_ok());
+            assert!(db.set(&k, &v, &txn).is_ok());
         }
     }
     assert!(txn.commit().is_ok());
@@ -617,7 +618,7 @@ fn test_keyrange_from_init_cursor() {
 
         // last key is excluded
         let lower_bound = recs[recs.len()-1].0 + 1;
-        let iter = db.keyrange_from(&lower_bound).unwrap();
+        let iter = db.keyrange_from(&lower_bound, &txn).unwrap();
 
         let res: Vec<_> = iter.map(|cv| cv.get_value::<u64>()).collect();
         assert_eq!(res, &[]);
@@ -638,7 +639,7 @@ fn test_keyrange() {
     {
         let db = txn.bind(&db);
         for (k, v) in keys.iter().zip(values.iter()) {
-            assert!(db.set(k, v).is_ok());
+            assert!(db.set(k, v, &txn).is_ok());
         }
     }
     assert!(txn.commit().is_ok());
@@ -649,7 +650,7 @@ fn test_keyrange() {
 
         let start_idx = 1;
         let end_idx = 3;
-        let iter = db.keyrange(&keys[start_idx], &keys[end_idx]).unwrap();
+        let iter = db.keyrange(&keys[start_idx], &keys[end_idx], &txn).unwrap();
 
         let res: Vec<_> = iter.map(|cv| cv.get_value::<u64>()).collect();
 
@@ -674,7 +675,7 @@ fn test_keyrange_init_cursor() {
     {
         let db = txn.bind(&db);
         for (k, v) in keys.iter().zip(values.iter()) {
-            assert!(db.set(k, v).is_ok());
+            assert!(db.set(k, v, &txn).is_ok());
         }
     }
     assert!(txn.commit().is_ok());
@@ -686,7 +687,7 @@ fn test_keyrange_init_cursor() {
 
         let start_key = 0u64;
         let end_key = 0u64;
-        let iter = db.keyrange(&start_key, &end_key).unwrap();
+        let iter = db.keyrange(&start_key, &end_key, &txn).unwrap();
 
         let res: Vec<_> = iter.map(|cv| cv.get_value::<u64>()).collect();
         assert_eq!(res, &[]);
@@ -698,7 +699,7 @@ fn test_keyrange_init_cursor() {
 
         let start_key = 10;
         let end_key = 20;
-        let iter = db.keyrange(&start_key, &end_key).unwrap();
+        let iter = db.keyrange(&start_key, &end_key, &txn).unwrap();
 
         let res: Vec<_> = iter.map(|cv| cv.get_value::<u64>()).collect();
         assert!(res.is_empty());
@@ -715,7 +716,7 @@ fn test_keyrange_from_to() {
     {
         let db = txn.bind(&db);
         for &(k, v) in recs.iter() {
-            assert!(db.set(&k, &v).is_ok());
+            assert!(db.set(&k, &v, &txn).is_ok());
         }
     }
     assert!(txn.commit().is_ok());
@@ -726,7 +727,7 @@ fn test_keyrange_from_to() {
 
         let start_idx = 1;
         let end_idx = 3;
-        let iter = db.keyrange_from_to(&recs[start_idx].0, &recs[end_idx].0).unwrap();
+        let iter = db.keyrange_from_to(&recs[start_idx].0, &recs[end_idx].0, &txn).unwrap();
 
         let res: Vec<_> = iter.map(|cv| cv.get_value::<u64>()).collect();
         // ~ end_key must be excluded here
@@ -749,7 +750,7 @@ fn test_readonly_env() {
         {
             let db = tx.bind(&dbh);
             for &rec in recs.iter() {
-                db.set(&rec.0, &rec.1).unwrap();
+                db.set(&rec.0, &rec.1, &tx).unwrap();
             }
         }
         tx.commit().unwrap();
@@ -765,7 +766,7 @@ fn test_readonly_env() {
     let mut tx = ro_env.get_reader().unwrap();
     {
         let db = tx.bind(&dbh);
-        let kvs: Vec<(u32,u32)> = db.iter().unwrap().map(|c| c.get()).collect();
+        let kvs: Vec<(u32,u32)> = db.iter(&tx).unwrap().map(|c| c.get()).collect();
         assert_eq!(recs, kvs);
     }
     tx.abort();
@@ -798,12 +799,12 @@ fn test_compare() {
     let val: i32 = 0;
     {
         let db = txn.bind(&db_handle);
-        assert!(db.set_compare(negative_odd_cmp_fn).is_ok());
+        assert!(db.set_compare(negative_odd_cmp_fn, &txn).is_ok());
 
         let i: i32 = 2;
-        db.set(&i, &val).unwrap();
+        db.set(&i, &val, &txn).unwrap();
         let i: i32 = 3;
-        db.set(&i, &val).unwrap();
+        db.set(&i, &val, &txn).unwrap();
     }
     assert!(txn.commit().is_ok());
 
@@ -811,16 +812,16 @@ fn test_compare() {
     {
         let db = txn.bind(&db_handle);
         let i: i32 = 4;
-        db.set(&i, &val).unwrap();
+        db.set(&i, &val, &txn).unwrap();
         let i: i32 = 5;
-        db.set(&i, &val).unwrap();
+        db.set(&i, &val, &txn).unwrap();
     }
     assert!(txn.commit().is_ok());
 
     let txn = env.new_transaction().unwrap();
     {
         let db = txn.bind(&db_handle);
-        let keys: Vec<_> = db.iter().unwrap().map(|cv| cv.get_key::<i32>()).collect();
+        let keys: Vec<_> = db.iter(&txn).unwrap().map(|cv| cv.get_key::<i32>()).collect();
         assert_eq!(keys, [5, 3, 2, 4]);
     }
     assert!(txn.commit().is_ok());
@@ -834,12 +835,12 @@ fn test_dupsort() {
     let key: i32 = 0;
     {
         let db = txn.bind(&db_handle);
-        assert!(db.set_dupsort(negative_odd_cmp_fn).is_ok());
+        assert!(db.set_dupsort(negative_odd_cmp_fn, &txn).is_ok());
 
         let i: i32 = 2;
-        db.set(&key, &i).unwrap();
+        db.set(&key, &i, &txn).unwrap();
         let i: i32 = 3;
-        db.set(&key, &i).unwrap();
+        db.set(&key, &i, &txn).unwrap();
     }
     assert!(txn.commit().is_ok());
 
@@ -847,16 +848,16 @@ fn test_dupsort() {
     {
         let db = txn.bind(&db_handle);
         let i: i32 = 4;
-        db.set(&key, &i).unwrap();
+        db.set(&key, &i, &txn).unwrap();
         let i: i32 = 5;
-        db.set(&key, &i).unwrap();
+        db.set(&key, &i, &txn).unwrap();
     }
     assert!(txn.commit().is_ok());
 
     let txn = env.new_transaction().unwrap();
     {
         let db = txn.bind(&db_handle);
-        let vals: Vec<_> = db.item_iter(&key).unwrap().map(|cv| cv.get_value::<i32>()).collect();
+        let vals: Vec<_> = db.item_iter(&key, &txn).unwrap().map(|cv| cv.get_value::<i32>()).collect();
         assert_eq!(vals, [5, 3, 2, 4]);
     }
     assert!(txn.commit().is_ok());
@@ -876,7 +877,7 @@ fn test_conversion_to_vecu8() {
         let tx = env.new_transaction().unwrap();
         {
             let db = tx.bind(&db);
-            db.set(&rec.0, &rec.1).unwrap();
+            db.set(&rec.0, &rec.1, &tx).unwrap();
         }
         tx.commit().unwrap();
     }
@@ -888,7 +889,7 @@ fn test_conversion_to_vecu8() {
         {
             // ~ now retrieve a Vec<u8> and make sure it is dropped
             // earlier than our database handle
-            let xs: Vec<u8> = db.get(&rec.0).unwrap();
+            let xs: Vec<u8> = db.get(&rec.0, &tx).unwrap();
             assert_eq!(rec.1, xs);
         }
     }
@@ -902,30 +903,28 @@ fn test_conversion_to_string() {
 
     let path = next_path();
     let env = EnvBuilder::new().open(&path, USER_DIR).unwrap();
-    let db = env.get_default_db(database::DB_INT_KEY).unwrap();
+        let tx = env.new_transaction().unwrap();
+    let db = env.new_db("", database::DB_INT_KEY).unwrap();
 
     // ~ add our test record
     {
-        let tx = env.new_transaction().unwrap();
         {
-            let db = tx.bind(&db);
-            db.set(&rec.0, &rec.1).unwrap();
+            db.set(&rec.0, &rec.1, &tx).unwrap();
         }
-        tx.commit().unwrap();
     }
+        tx.commit().unwrap();
 
     // ~ validate the behavior
-    let tx = env.new_transaction().unwrap();
     {
-        let db = tx.bind(&db);
+    let tx = env.new_transaction().unwrap();
         {
             // ~ now retrieve a String and make sure it is dropped
             // earlier than our database handle
-            let xs: String = db.get(&rec.0).unwrap();
+            let xs: String = db.get(&rec.0, &tx).unwrap();
             assert_eq!(rec.1, xs);
         }
-    }
     tx.abort();
+    }
 }
 
 /*
