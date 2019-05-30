@@ -107,8 +107,11 @@ impl<'a> Drop for NativeTransaction<'a> {
     }
 }
 
-pub trait Txn<'a> {
-    fn get_inner_txn<'b>(&'a self) -> &'a NativeTransaction<'a>;
+pub trait Txn<'a>: std::fmt::Debug {
+    // fn get_inner_txn<'b>(&'a self) -> &'a NativeTransaction<'a>;
+    fn get_handle(&self) -> *mut ffi::MDB_txn;
+    fn get_env(&self) -> &'a Environment;
+    fn get_state(&self) -> TransactionState;
 }
 
 #[derive(Debug)]
@@ -117,8 +120,17 @@ pub struct Transaction<'a> {
 }
 
 impl<'a> Txn<'a> for Transaction<'a> {
-    fn get_inner_txn<'b>(&'a self) -> &'a NativeTransaction<'a> {
-        &self.inner
+    // fn get_inner_txn<'b>(&'a self) -> &'a NativeTransaction<'a> {
+    //     &self.inner
+    // }
+    fn get_handle(&self) -> *mut ffi::MDB_txn {
+        self.inner.handle
+    }
+    fn get_env(&self) -> &'a Environment {
+        self.inner.env
+    }
+    fn get_state(&self) -> TransactionState {
+        self.inner.state
     }
 }
 
@@ -152,9 +164,9 @@ impl<'a> Transaction<'a> {
         t.inner.abort();
     }
 
-    pub fn bind(&self, db_handle: &DbHandle) -> Database {
-        Database::new_with_handle(db_handle.handle)
-    }
+    // pub fn bind(&self, db_handle: &DbHandle) -> Database {
+    //     Database::new_with_handle(db_handle.handle)
+    // }
 }
 
 
@@ -164,9 +176,19 @@ pub struct ReadonlyTransaction<'a> {
 }
 
 impl<'a> Txn<'a> for ReadonlyTransaction<'a> {
-    fn get_inner_txn<'b>(&'a self) -> &'a NativeTransaction<'a> {
-        &self.inner
+//     fn get_inner_txn<'b>(&'a self) -> &'a NativeTransaction<'a> {
+//         &self.inner
+//     }
+    fn get_handle(&self) -> *mut ffi::MDB_txn {
+        self.inner.handle
     }
+    fn get_env(&self) -> &'a Environment {
+        self.inner.env
+    }
+    fn get_state(&self) -> TransactionState {
+        self.inner.state
+    }
+
 }
 
 impl<'a> ReadonlyTransaction<'a> {

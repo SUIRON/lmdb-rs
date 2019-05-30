@@ -14,7 +14,7 @@ use ffi::{self};
 use crate::core::{ MdbError, MdbResult };
 use crate::database::Database;
 use crate::transaction::{ NativeTransaction, Transaction, ReadonlyTransaction };
-use crate::database::{ DbFlags, DB_CREATE, DbHandle };
+use crate::database::{ DbFlags, DB_CREATE };
 
 bitflags! {
     #[doc = "A set of environment flags which could be changed after opening"]
@@ -531,25 +531,19 @@ impl Environment {
     }
 
     /// Opens existing DB
-    pub fn get_db(& self, db_name: &str, flags: DbFlags) -> MdbResult<DbHandle> {
+    pub fn get_db(& self, db_name: &str, flags: DbFlags) -> MdbResult<Database> {
         let db = try!(self._open_db(db_name, flags, false));
-        Ok(DbHandle {handle: db, flags: flags})
-    }
-
-    pub fn new_db(&self, db_name: &str, flags: DbFlags) -> MdbResult<Database> {
-        let db = try!(self._open_db(db_name, flags, true));
-        //let handle = DbHandle {handle: db, flags: flags};
         Ok(Database::new_with_handle(db))
     }
 
     /// Opens or creates a DB
-    pub fn create_db(&self, db_name: &str, flags: DbFlags) -> MdbResult<DbHandle> {
+    pub fn create_db(&self, db_name: &str, flags: DbFlags) -> MdbResult<Database> {
         let db = try!(self._open_db(db_name, flags, true));
-        Ok(DbHandle {handle: db, flags: flags})
+        Ok(Database::new_with_handle(db))
     }
 
     /// Opens default DB with specified flags
-    pub fn get_default_db(&self, flags: DbFlags) -> MdbResult<DbHandle> {
+    pub fn get_default_db(&self, flags: DbFlags) -> MdbResult<Database> {
         self.get_db("", flags)
     }
 
