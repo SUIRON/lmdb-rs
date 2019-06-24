@@ -484,7 +484,7 @@ fn test_multithread_env() {
 
     let db = env.create_db("test1", DbFlags::empty()).unwrap();
     let txn = env.get_reader().unwrap();
-    let value2: String = db.get(&key, &txn).unwrap();
+    let value2: &str = db.get(&key, &txn).unwrap();
     assert_eq!(value, value2);
 }
 

@@ -13,7 +13,7 @@ pub use ffi::{mdb_filehandle_t, MDB_stat, MDB_envinfo, MDB_val};
 pub use environment::{EnvBuilder, Environment, EnvFlags, EnvCreateFlags};
 pub use database::{Database, DbFlags, DbHandle};
 pub use core::{MdbError, MdbValue};
-pub use transaction::{Transaction, ReadonlyTransaction };
+pub use transaction::{Transaction, ReadonlyTransaction, Txn };
 pub use cursor::{Cursor, CursorValue, CursorIter, CursorKeyRangeIter};
 pub use traits::{FromMdbValue, ToMdbValue};
 

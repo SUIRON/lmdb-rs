@@ -150,12 +150,6 @@ impl Error for MdbError {
 
 pub type MdbResult<T> = Result<T, MdbError>;
 
-
-
-
-
-
-
 #[derive(Copy, Clone, Debug)]
 pub struct MdbValue<'a> {
     pub value: MDB_val,

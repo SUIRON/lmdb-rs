@@ -1,4 +1,4 @@
-extern crate lmdb_rs as lmdb;
+extern crate lmdb_rs_et as lmdb;
 
 use lmdb::{EnvBuilder, DbFlags};
 
