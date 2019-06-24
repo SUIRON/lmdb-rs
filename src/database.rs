@@ -56,7 +56,7 @@ pub struct Database {
 
 impl Database {
     pub fn new_with_handle(handle: ffi::MDB_dbi) -> Database {
-        Database { handle: handle }
+        Database { handle }
     }
 
     /// Retrieves current db's statistics.

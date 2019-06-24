@@ -28,9 +28,9 @@ impl<'a> NativeTransaction<'a> {
         // debug!("new native txn");
         NativeTransaction {
             handle: h,
-            flags: flags,
+            flags,
             state: TransactionState::Normal,
-            env: env,
+            env,
         }
     }
 
@@ -222,7 +222,7 @@ impl<'a> ReadonlyTransaction<'a> {
         self.inner.renew()
     }
 
-    pub fn bind(&self, db_handle: &DbHandle) -> Database {
+    pub fn bind(&self, db_handle: DbHandle) -> Database {
         Database::new_with_handle(db_handle.handle)
     }
 }

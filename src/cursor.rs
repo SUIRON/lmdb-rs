@@ -57,8 +57,8 @@ impl<'c, 'txn> Cursor<'c, 'txn> {
             handle: tmp,
             data_val: unsafe { std::mem::zeroed() },
             key_val: unsafe { std::mem::zeroed() },
-            txn: txn,
-            db: db,
+            txn,
+            db,
             valid_key: false,
         })
     }
@@ -96,67 +96,67 @@ impl<'c, 'txn> Cursor<'c, 'txn> {
     }
 
     /// Moves cursor to first entry
-    pub fn to_first(&mut self) -> MdbResult<()> {
+    pub fn move_to_first(&mut self) -> MdbResult<()> {
         self.navigate(ffi::MDB_cursor_op::MDB_FIRST)
     }
 
     /// Moves cursor to last entry
-    pub fn to_last(&mut self) -> MdbResult<()> {
+    pub fn move_to_last(&mut self) -> MdbResult<()> {
         self.navigate(ffi::MDB_cursor_op::MDB_LAST)
     }
 
     /// Moves cursor to first entry for key if it exists
-    pub fn to_key<'k, K: ToMdbValue>(&mut self, key: &'k K) -> MdbResult<()> {
+    pub fn move_to_key<'k, K: ToMdbValue>(&mut self, key: &'k K) -> MdbResult<()> {
         self.move_to(key, None::<&MdbValue<'k>>, ffi::MDB_cursor_op::MDB_SET_KEY)
     }
 
     /// Moves cursor to first entry for key greater than
     /// or equal to ke
-    pub fn to_gte_key<'k, K: ToMdbValue>(&mut self, key: &'k K) -> MdbResult<()> {
+    pub fn move_to_gte_key<'k, K: ToMdbValue>(&mut self, key: &'k K) -> MdbResult<()> {
         self.move_to(key, None::<&MdbValue<'k>>, ffi::MDB_cursor_op::MDB_SET_RANGE)
     }
 
     /// Moves cursor to specific item (for example, if cursor
     /// already points to a correct key and you need to delete
     /// a specific item through cursor)
-    pub fn to_item<K, V>(&mut self, key: &K, value: & V) -> MdbResult<()> where K: ToMdbValue, V: ToMdbValue {
+    pub fn move_to_item<K, V>(&mut self, key: &K, value: & V) -> MdbResult<()> where K: ToMdbValue, V: ToMdbValue {
         self.move_to(key, Some(value), ffi::MDB_cursor_op::MDB_GET_BOTH)
     }
 
     /// Moves cursor to nearest item.
-    pub fn to_gte_item<K, V>(&mut self, key: &K, value: & V) -> MdbResult<()> where K: ToMdbValue, V: ToMdbValue {
+    pub fn move_to_gte_item<K, V>(&mut self, key: &K, value: & V) -> MdbResult<()> where K: ToMdbValue, V: ToMdbValue {
         self.move_to(key, Some(value), ffi::MDB_cursor_op::MDB_GET_BOTH_RANGE)
     }
 
     /// Moves cursor to next key, i.e. skip items
     /// with duplicate keys
-    pub fn to_next_key(&mut self) -> MdbResult<()> {
+    pub fn move_to_next_key(&mut self) -> MdbResult<()> {
         self.navigate(ffi::MDB_cursor_op::MDB_NEXT_NODUP)
     }
 
     /// Moves cursor to next item with the same key as current
-    pub fn to_next_item(&mut self) -> MdbResult<()> {
+    pub fn move_to_next_item(&mut self) -> MdbResult<()> {
         self.navigate(ffi::MDB_cursor_op::MDB_NEXT_DUP)
     }
 
     /// Moves cursor to prev entry, i.e. skips items
     /// with duplicate keys
-    pub fn to_prev_key(&mut self) -> MdbResult<()> {
+    pub fn move_to_prev_key(&mut self) -> MdbResult<()> {
         self.navigate(ffi::MDB_cursor_op::MDB_PREV_NODUP)
     }
 
     /// Moves cursor to prev item with the same key as current
-    pub fn to_prev_item(&mut self) -> MdbResult<()> {
+    pub fn move_to_prev_item(&mut self) -> MdbResult<()> {
         self.navigate(ffi::MDB_cursor_op::MDB_PREV_DUP)
     }
 
     /// Moves cursor to first item with the same key as current
-    pub fn to_first_item(&mut self) -> MdbResult<()> {
+    pub fn move_to_first_item(&mut self) -> MdbResult<()> {
         self.navigate(ffi::MDB_cursor_op::MDB_FIRST_DUP)
     }
 
     /// Moves cursor to last item with the same key as current
-    pub fn to_last_item(&mut self) -> MdbResult<()> {
+    pub fn move_to_last_item(&mut self) -> MdbResult<()> {
         self.navigate(ffi::MDB_cursor_op::MDB_LAST_DUP)
     }
 
@@ -194,7 +194,7 @@ impl<'c, 'txn> Cursor<'c, 'txn> {
         let (k, _) = try!(self.get_plain());
         let mut kval = k.value;
         let cmp = unsafe {
-            ffi::mdb_cmp(self.txn.get_handle(), self.db, &mut kval, mem::transmute(other))
+            ffi::mdb_cmp(self.txn.get_handle(), self.db, &mut kval, other as *const MdbValue<'_> as *mut ffi::MDB_val)
         };
         Ok(match cmp {
             n if n < 0 => Ordering::Less,
@@ -319,7 +319,7 @@ pub struct CursorItemAccessor<'c, 'k, 'txn, K: 'k> {
 
 impl<'k, 'c: 'k, 'txn, K: ToMdbValue> CursorItemAccessor<'c, 'k, 'txn, K> {
     pub fn get<'a, V: FromMdbValue + 'a>(&'a mut self) -> MdbResult<V> {
-        try!(self.cursor.to_key(self.key));
+        try!(self.cursor.move_to_key(self.key));
         self.cursor.get_value()
     }
 
@@ -328,12 +328,12 @@ impl<'k, 'c: 'k, 'txn, K: ToMdbValue> CursorItemAccessor<'c, 'k, 'txn, K> {
     }
 
     pub fn del<V: ToMdbValue>(&mut self, v: &V) -> MdbResult<()> {
-        try!(self.cursor.to_item(self.key, v));
+        try!(self.cursor.move_to_item(self.key, v));
         self.cursor.del_item()
     }
 
     pub fn del_all(&mut self) -> MdbResult<()> {
-        try!(self.cursor.to_key(self.key));
+        try!(self.cursor.move_to_key(self.key));
         self.cursor.del_all()
     }
 
@@ -398,9 +398,9 @@ impl<'c, 'txn, I: IterateCursor + 'c> CursorIterator<'c, 'txn, I> {
         let mut cursor = cursor;
         let has_data = inner.init_cursor(&mut cursor);
         CursorIterator {
-            inner: inner,
-            has_data: has_data,
-            cursor: cursor,
+            inner,
+            has_data,
+            cursor,
             marker: ::std::marker::PhantomData,
         }
     }
@@ -450,7 +450,7 @@ impl<'a> CursorKeyRangeIter<'a> {
         CursorKeyRangeIter {
             start_key: start_key.to_mdb_value(),
             end_key: end_key.to_mdb_value(),
-            end_inclusive: end_inclusive,
+            end_inclusive,
             marker: ::std::marker::PhantomData,
         }
     }
@@ -459,13 +459,13 @@ impl<'a> CursorKeyRangeIter<'a> {
 impl<'iter> IterateCursor for CursorKeyRangeIter<'iter> {
     fn init_cursor<'a, 'b: 'a, 'txn>(&'a self, cursor: & mut Cursor<'b, 'txn>) -> bool {
         let ok = unsafe {
-            cursor.to_gte_key(mem::transmute::<&'a MdbValue<'a>, &'b MdbValue<'b>>(&self.start_key)).is_ok()
+            cursor.move_to_gte_key(mem::transmute::<&'a MdbValue<'a>, &'b MdbValue<'b>>(&self.start_key)).is_ok()
         };
         ok && cursor.cmp_key(&self.end_key).is_less(self.end_inclusive)
     }
 
     fn move_to_next<'i, 'c: 'i, 'txn>(&'i self, cursor: &'c mut Cursor<'c, 'txn>) -> bool {
-        let moved = cursor.to_next_key().is_ok();
+        let moved = cursor.move_to_next_key().is_ok();
         if !moved {
             false
         } else {
@@ -493,12 +493,12 @@ impl<'a> CursorFromKeyIter<'a> {
 impl<'iter> IterateCursor for CursorFromKeyIter<'iter> {
     fn init_cursor<'a, 'b: 'a, 'txn>(&'a self, cursor: & mut Cursor<'b, 'txn>) -> bool {
         unsafe {
-            cursor.to_gte_key(mem::transmute::<&'a MdbValue<'a>, &'b MdbValue<'b>>(&self.start_key)).is_ok()
+            cursor.move_to_gte_key(mem::transmute::<&'a MdbValue<'a>, &'b MdbValue<'b>>(&self.start_key)).is_ok()
         }
     }
 
     fn move_to_next<'i, 'c: 'i, 'txn>(&'i self, cursor: &'c mut Cursor<'c, 'txn>) -> bool {
-        cursor.to_next_key().is_ok()
+        cursor.move_to_next_key().is_ok()
     }
 }
 
@@ -521,12 +521,12 @@ impl<'a> CursorToKeyIter<'a> {
 
 impl<'iter> IterateCursor for CursorToKeyIter<'iter> {
     fn init_cursor<'a, 'b: 'a, 'txn>(&'a self, cursor: & mut Cursor<'b, 'txn>) -> bool {
-        let ok = cursor.to_first().is_ok();
+        let ok = cursor.move_to_first().is_ok();
         ok && cursor.cmp_key(&self.end_key).is_less(false)
     }
 
     fn move_to_next<'i, 'c: 'i, 'txn>(&'i self, cursor: &'c mut Cursor<'c, 'txn>) -> bool {
-        let moved = cursor.to_next_key().is_ok();
+        let moved = cursor.move_to_next_key().is_ok();
         if !moved {
             false
         } else {
@@ -542,11 +542,11 @@ pub struct CursorIter;
 
 impl<'iter> IterateCursor for CursorIter {
     fn init_cursor<'a, 'b: 'a, 'txn>(&'a self, cursor: & mut Cursor<'b, 'txn>) -> bool {
-        cursor.to_first().is_ok()
+        cursor.move_to_first().is_ok()
     }
 
     fn move_to_next<'i, 'c: 'i, 'txn>(&'i self, cursor: &'c mut Cursor<'c, 'txn>) -> bool {
-        cursor.to_next_key().is_ok()
+        cursor.move_to_next_key().is_ok()
     }
 }
 
@@ -570,12 +570,12 @@ impl<'a> CursorItemIter<'a> {
 impl<'iter> IterateCursor for CursorItemIter<'iter> {
     fn init_cursor<'a, 'b: 'a, 'txn>(&'a self, cursor: & mut Cursor<'b, 'txn>) -> bool {
         unsafe {
-            cursor.to_key(mem::transmute::<&MdbValue, &'b MdbValue<'b>>(&self.key)).is_ok()
+            cursor.move_to_key(mem::transmute::<&MdbValue, &'b MdbValue<'b>>(&self.key)).is_ok()
         }
     }
 
     fn move_to_next<'i, 'c: 'i, 'txn>(&'i self, cursor: &'c mut Cursor<'c, 'txn>) -> bool {
-        cursor.to_next_item().is_ok()
+        cursor.move_to_next_item().is_ok()
     }
 
     fn get_size_hint(&self, c: &Cursor) -> (usize, Option<usize>) {

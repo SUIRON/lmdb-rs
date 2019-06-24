@@ -5,7 +5,6 @@ use std::cell::{UnsafeCell};
 use std::collections::HashMap;
 use std::ffi::{CString};
 use std::path::Path;
-use std::mem;
 use std::ptr;
 use std::sync::{Arc, Mutex};
 
@@ -191,7 +190,7 @@ bitflags! {
 /// changed after opening. By default it tries to create
 /// corresponding dir if it doesn't exist, use `autocreate_dir()`
 /// to override that behavior
-#[derive(Copy, Clone, Debug)]
+#[derive(Clone, Debug)]
 pub struct EnvBuilder {
     flags: EnvCreateFlags,
     max_readers: Option<usize>,
@@ -249,8 +248,8 @@ impl EnvBuilder {
 
         let env: *mut ffi::MDB_env = ptr::null_mut();
         unsafe {
-            let p_env: *mut *mut ffi::MDB_env = std::mem::transmute(&env);
-            let _ = try_mdb!(ffi::mdb_env_create(p_env));
+            let p_env: *mut *mut ffi::MDB_env = &env as *const *mut ffi::MDB_env as *mut *mut ffi::MDB_env;
+            try_mdb!(ffi::mdb_env_create(p_env));
         }
 
         // Enable only flags which can be changed, otherwise it'll fail
@@ -269,7 +268,7 @@ impl EnvBuilder {
         }
 
         if self.autocreate_dir {
-            let _ = try!(EnvBuilder::check_path(&path, self.flags));
+            try!(EnvBuilder::check_path(&path, self.flags));
         }
 
         let is_readonly = self.flags.contains(ENV_CREATE_READONLY);
@@ -280,7 +279,7 @@ impl EnvBuilder {
             let path_str = try!(path.as_ref().to_str().ok_or(MdbError::InvalidPath));
             let c_path = try!(CString::new(path_str).map_err(|_| MdbError::InvalidPath));
 
-            ffi::mdb_env_open(mem::transmute(env), c_path.as_ref().as_ptr(), self.flags.bits(),
+            ffi::mdb_env_open(env, c_path.as_ref().as_ptr(), self.flags.bits(),
                               perms as ffi::mdb_mode_t)
         };
 
@@ -290,7 +289,7 @@ impl EnvBuilder {
                 Ok(Environment::from_raw(env, is_readonly))
             },
             _ => {
-                unsafe { ffi::mdb_env_close(mem::transmute(env)); }
+                unsafe { ffi::mdb_env_close(env); }
                 Err(MdbError::new_with_code(res))
             }
         }
@@ -317,7 +316,7 @@ impl EnvBuilder {
             },
             Err(e) => {
                 if e.kind() == io::ErrorKind::NotFound {
-                    fs::create_dir_all(path.as_ref().clone()).map_err(|e| {
+                    fs::create_dir_all(path.as_ref()).map_err(|e| {
                         error!("failed to auto create dir: {}", e);
                         MdbError::InvalidPath
                     })
@@ -335,7 +334,7 @@ struct EnvHandle(*mut ffi::MDB_env);
 impl Drop for EnvHandle {
     fn drop(&mut self) {
         unsafe {
-            if self.0 != ptr::null_mut() {
+            if self.0.is_null() {
                 ffi::mdb_env_close(self.0);
             }
         }
@@ -359,7 +358,7 @@ impl Environment {
         Environment {
             env: Arc::new(EnvHandle(env)),
             db_cache: Arc::new(Mutex::new(UnsafeCell::new(HashMap::new()))),
-            is_readonly: is_readonly,
+            is_readonly,
         }
     }
 
@@ -489,7 +488,7 @@ impl Environment {
         match self.db_cache.lock() {
             Err(_) => Err(MdbError::CacheError),
             Ok(guard) => {
-                let ref cell = *guard;
+                let cell = &*guard;
                 let cache = cell.get();
 
                 unsafe {
@@ -503,7 +502,7 @@ impl Environment {
                     let txflags = if self.is_readonly { ffi::MDB_RDONLY } else { 0 };
                     try!(self.create_transaction(None, txflags))
                 };
-                let opt_name = if db_name.len() > 0 {Some(db_name)} else {None};
+                let opt_name = if !db_name.is_empty() {Some(db_name)} else {None};
                 let flags = if force_creation {flags | DB_CREATE} else {flags - DB_CREATE};
 
                 let mut db: ffi::MDB_dbi = 0;
@@ -551,7 +550,7 @@ impl Environment {
         match self.db_cache.lock() {
             Err(_) => (),
             Ok(guard) => {
-                let ref cell = *guard;
+                let cell = &*guard;
 
                 unsafe {
                     let cache = cell.get();

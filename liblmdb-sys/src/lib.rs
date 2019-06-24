@@ -203,7 +203,7 @@ extern "C" {
 impl std::fmt::Debug for MDB_val {
     fn fmt(&self, fmt: &mut std::fmt::Formatter) -> std::fmt::Result {
         unsafe {
-            let buf: &[u8] = std::slice::from_raw_parts(std::mem::transmute(self.mv_data),
+            let buf: &[u8] = std::slice::from_raw_parts(self.mv_data as *const u8,
                                                         self.mv_size as usize);
             write!(fmt, "{:?}@{:?}", buf, self.mv_data)
         }

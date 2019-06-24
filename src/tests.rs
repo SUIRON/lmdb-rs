@@ -312,15 +312,15 @@ fn test_cursors() {
     }
 
     let mut cursor = db.new_cursor(&txn).unwrap();
-    assert!(cursor.to_first().is_ok());
+    assert!(cursor.move_to_first().is_ok());
 
-    assert!(cursor.to_key(&test_key1).is_ok());
+    assert!(cursor.move_to_key(&test_key1).is_ok());
     assert!(cursor.item_count().unwrap() == 4);
 
     assert!(cursor.del_item().is_ok());
     assert!(cursor.item_count().unwrap() == 3);
 
-    assert!(cursor.to_key(&test_key1).is_ok());
+    assert!(cursor.move_to_key(&test_key1).is_ok());
     let new_value = "testme";
 
     assert!(cursor.replace(&new_value).is_ok());
@@ -332,9 +332,9 @@ fn test_cursors() {
     }
 
     assert!(cursor.del_all().is_ok());
-    assert!(cursor.to_key(&test_key1).is_err());
+    assert!(cursor.move_to_key(&test_key1).is_err());
 
-    assert!(cursor.to_key(&test_key2).is_ok());
+    assert!(cursor.move_to_key(&test_key2).is_ok());
 }
 
 
@@ -353,7 +353,7 @@ fn test_cursor_item_manip() {
     assert!(db.set(&test_key1, &3u64, &txn).is_ok());
 
     let mut cursor = db.new_cursor(&txn).unwrap();
-    assert!(cursor.to_key(&test_key1).is_ok());
+    assert!(cursor.move_to_key(&test_key1).is_ok());
 
     let values: Vec<u64> = db.item_iter(&test_key1, &txn).unwrap()
         .map(|cv| cv.get_value::<u64>())

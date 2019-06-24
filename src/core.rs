@@ -119,30 +119,30 @@ impl MdbError {
 
 impl std::fmt::Display for MdbError {
     fn fmt(&self, fmt: &mut std::fmt::Formatter) -> std::fmt::Result {
-        match self {
-            &NotFound | &KeyExists | &TxnFull |
-            &CursorFull | &PageFull | &Corrupted |
-            &Panic | &InvalidPath | &CacheError => write!(fmt, "{}", self.description()),
-            &StateError(ref msg) => write!(fmt, "{}", msg),
-            &Other(code, ref msg) => write!(fmt, "{}: {}", code, msg)
+        match &self {
+            NotFound | KeyExists | TxnFull |
+            CursorFull | PageFull | Corrupted |
+            Panic | InvalidPath | CacheError => write!(fmt, "{}", self.description()),
+            StateError(ref msg) => write!(fmt, "{}", msg),
+            Other(code, ref msg) => write!(fmt, "{}: {}", code, msg)
         }
     }
 }
 
 impl Error for MdbError {
     fn description(&self) -> &'static str {
-        match self {
-            &NotFound => "not found",
-            &KeyExists => "key exists",
-            &TxnFull => "txn full",
-            &CursorFull => "cursor full",
-            &PageFull => "page full",
-            &Corrupted => "corrupted",
-            &Panic => "panic",
-            &InvalidPath => "invalid path for database",
-            &StateError(_) => "state error",
-            &CacheError => "db cache error",
-            &Other(_, _) => "other error",
+        match &self {
+            NotFound => "not found",
+            KeyExists => "key exists",
+            TxnFull => "txn full",
+            CursorFull => "cursor full",
+            PageFull => "page full",
+            Corrupted => "corrupted",
+            Panic => "panic",
+            InvalidPath => "invalid path for database",
+            StateError(_) => "state error",
+            CacheError => "db cache error",
+            Other(_, _) => "other error",
         }
     }
 }
@@ -176,7 +176,7 @@ impl<'a> MdbValue<'a> {
     #[inline]
     pub fn new_from_sized<T>(data: &'a T) -> MdbValue<'a> {
         unsafe {
-            MdbValue::new(mem::transmute(data), mem::size_of::<T>())
+            MdbValue::new(data as *const T as *const libc::c_void, mem::size_of::<T>())
         }
     }
 
