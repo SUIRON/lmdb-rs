@@ -34,9 +34,6 @@ impl IsLess for MdbResult<Ordering> {
     }
 }
 
-
-
-
 #[derive(Debug)]
 pub struct Cursor<'c, 'txn> {
     handle: *mut ffi::MDB_cursor,
@@ -95,6 +92,41 @@ impl<'c, 'txn> Cursor<'c, 'txn> {
         self.navigate(op)
     }
 
+    fn move_to_prev<K, V>(&mut self, key: &K, value: Option<&V>) -> MdbResult<()>
+        where K: ToMdbValue, V: ToMdbValue {
+        self.key_val = key.to_mdb_value().value;
+        self.data_val = match value {
+            Some(v) => v.to_mdb_value().value,
+            _ => unsafe {std::mem::zeroed() }
+        };
+        let mut original_key = key.to_mdb_value().value;
+
+        self.valid_key = false;
+
+        let res = unsafe {
+            ffi::mdb_cursor_get(self.handle, &mut self.key_val, &mut self.data_val, ffi::MDB_cursor_op::MDB_SET_RANGE)
+        };
+        if res == ffi::MDB_NOTFOUND || res == ffi::MDB_SUCCESS {
+            if unsafe {ffi::mdb_cmp(self.txn.get_handle(), self.db, &mut original_key, &mut self.key_val) < 0 || res == ffi::MDB_NOTFOUND } {
+                let res = unsafe {
+                    ffi::mdb_cursor_get(self.handle, &mut self.key_val, &mut self.data_val, ffi::MDB_cursor_op::MDB_PREV_NODUP)
+                };
+                match res {
+                    ffi::MDB_SUCCESS => {
+                        self.valid_key = true;
+                        return Ok(())
+                    },
+                    _ => return Err(MdbError::new_with_code(res))
+                }
+            }
+            if res == ffi::MDB_SUCCESS {
+                self.valid_key = true;
+                return Ok(())
+            }
+        }
+        Err(MdbError::new_with_code(res))
+    }
+
     /// Moves cursor to first entry
     pub fn move_to_first(&mut self) -> MdbResult<()> {
         self.navigate(ffi::MDB_cursor_op::MDB_FIRST)
@@ -114,6 +146,25 @@ impl<'c, 'txn> Cursor<'c, 'txn> {
     /// or equal to ke
     pub fn move_to_gte_key<'k, K: ToMdbValue>(&mut self, key: &'k K) -> MdbResult<()> {
         self.move_to(key, None::<&MdbValue<'k>>, ffi::MDB_cursor_op::MDB_SET_RANGE)
+    }
+
+    /// Moves cursor to first entry for key less than
+    /// or equal to ke
+    /// when the database supports dup-keys this will point the cursor to the last item of
+    /// the previous key
+    pub fn move_to_lte_key<'k, K: ToMdbValue>(&mut self, key: &'k K) -> MdbResult<()> {
+        self.move_to_prev(key, None::<&MdbValue<'k>>)
+    }
+
+    /// Moves cursor to first entry for key less than
+    /// or equal to ke
+    /// when the database supports dup-keys this will point the cursor to the first item of
+    /// the previous key
+    pub fn move_to_lte_key_first_item<'k, K: ToMdbValue>(&mut self, key: &'k K) -> MdbResult<()> {
+        match self.move_to_prev(key, None::<&MdbValue<'k>>) {
+            Ok(_) => self.move_to_first_item(),
+            Err(e) => Err(e)
+        }
     }
 
     /// Moves cursor to specific item (for example, if cursor
@@ -143,6 +194,13 @@ impl<'c, 'txn> Cursor<'c, 'txn> {
     /// with duplicate keys
     pub fn move_to_prev_key(&mut self) -> MdbResult<()> {
         self.navigate(ffi::MDB_cursor_op::MDB_PREV_NODUP)
+    }
+
+    pub fn move_to_prev_key_dup(&mut self) -> MdbResult<()> {
+        match self.navigate(ffi::MDB_cursor_op::MDB_PREV_NODUP) {
+            Ok(_) => self.move_to_first_item(),
+            Err(e) => Err(e)
+        }
     }
 
     /// Moves cursor to prev item with the same key as current
@@ -208,6 +266,7 @@ impl<'c, 'txn> Cursor<'c, 'txn> {
         // If key might be invalid simply perform cursor get to be sure
         // it points to database memory instead of user one
         if !self.valid_key {
+            println!("not valid key");
             unsafe {
                 try_mdb!(ffi::mdb_cursor_get(self.handle, &mut self.key_val,
                                              ptr::null_mut(),
@@ -342,7 +401,6 @@ impl<'k, 'c: 'k, 'txn, K: ToMdbValue> CursorItemAccessor<'c, 'k, 'txn, K> {
         tmp.cursor
     }
 }
-
 
 #[derive(Debug)]
 pub struct CursorValue<'cursor> {

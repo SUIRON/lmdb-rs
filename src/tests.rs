@@ -289,6 +289,77 @@ fn test_stat() {
     assert_eq!(dss[0].1.len() + dss[1..].len(), stat.ms_entries);
 }
 
+#[test]
+fn test_cursor_le() {
+    let env = EnvBuilder::new()
+        .max_dbs(5)
+        .open(&next_path(), USER_DIR)
+        .unwrap();
+
+    let db = env.get_default_db(database::DB_INT_KEY).unwrap();
+    let txn = env.new_transaction().unwrap();
+
+    let mut search_key = 10;
+    let mut cursor = db.new_cursor(&txn).unwrap();
+
+    if let Err(e) = cursor.move_to_lte_key(&search_key) {
+        println!("{:?}", e);
+    }
+    let test_key1 = 10;
+    let test_key2 = 20;
+    let val1="one";
+    let val2="two";
+    let _ = db.set(&test_key1, &val1, &txn);
+    let _ = db.set(&test_key2, &val2, &txn);
+    search_key = 15;
+
+    assert!(cursor.move_to_lte_key(&search_key).is_ok());
+    assert_eq!((10, "one"), cursor.get::<u32, &str>().unwrap());
+    
+    search_key = 20;
+    assert!(cursor.move_to_lte_key(&search_key).is_ok());
+    assert_eq!((20, "two"), cursor.get::<u32, &str>().unwrap());
+
+    search_key = 25;
+    assert!(cursor.move_to_lte_key(&search_key).is_ok());
+    assert_eq!((20, "two"), cursor.get::<u32, &str>().unwrap());
+
+}
+
+#[test]
+fn test_cursor_le_dup() {
+    let env = EnvBuilder::new()
+        .max_dbs(5)
+        .open(&next_path(), USER_DIR)
+        .unwrap();
+
+    let db = env.create_db("test_le_dup", database::DB_INT_KEY | database::DB_ALLOW_DUPS | database::DB_ALLOW_INT_DUPS).unwrap();
+    let txn = env.new_transaction().unwrap();
+
+    let mut cursor = db.new_cursor(&txn).unwrap();
+
+    let test_key1 = 10;
+    let test_key2 = 20;
+    let key1_val1=101;
+    let key1_val2=102;
+    let key2_val1=201;
+    let key2_val2=202;
+    let _ = db.set(&test_key1, &key1_val1, &txn);
+    let _ = db.set(&test_key1, &key1_val2, &txn);
+    let _ = db.set(&test_key2, &key2_val1, &txn);
+    let _ = db.set(&test_key2, &key2_val2, &txn);
+    let mut search_key = 15;
+    assert!(cursor.move_to_lte_key_first_item(&search_key).is_ok());
+    assert_eq!((10, 101), cursor.get::<u32, u32>().unwrap());
+    
+    search_key = 20;
+    assert!(cursor.move_to_lte_key_first_item(&search_key).is_ok());
+    assert_eq!((20, 201), cursor.get::<u32, u32>().unwrap());
+
+    search_key = 25;
+    assert!(cursor.move_to_lte_key_first_item(&search_key).is_ok());
+    assert_eq!((20, 201), cursor.get::<u32, u32>().unwrap());
+}
 
 #[test]
 fn test_cursors() {

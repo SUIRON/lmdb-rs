@@ -12,9 +12,9 @@ pub use libc::c_int;
 pub use ffi::{mdb_filehandle_t, MDB_stat, MDB_envinfo, MDB_val};
 pub use environment::{EnvBuilder, Environment, EnvFlags, EnvCreateFlags};
 pub use database::{Database, DbFlags, DbHandle};
-pub use core::{MdbError, MdbValue};
+pub use core::{MdbError, MdbValue, MdbResult};
 pub use transaction::{Transaction, ReadonlyTransaction, Txn };
-pub use cursor::{Cursor, CursorValue, CursorIter, CursorKeyRangeIter};
+pub use cursor::{Cursor, CursorValue, CursorIter, CursorKeyRangeIter, CursorIterator, IterateCursor};
 pub use traits::{FromMdbValue, ToMdbValue};
 
 #[macro_use]

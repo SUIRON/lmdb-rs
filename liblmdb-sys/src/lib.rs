@@ -140,11 +140,11 @@ pub const MDB_NOSYNC: c_uint = 0x10000;
 pub const MDB_RDONLY: c_uint = 0x20000;
 pub const MDB_NOMETASYNC: c_uint = 0x40000;
 pub const MDB_WRITEMAP: c_uint = 0x80000;
-pub const MDB_MAPASYNC: c_uint = 0x100000;
-pub const MDB_NOTLS: c_uint = 0x200000;
-pub const MDB_NOLOCK: c_uint =  0x400000;
-pub const MDB_NORDAHEAD: c_uint = 0x800000;
-pub const MDB_NOMEMINIT: c_uint =  0x1000000;
+pub const MDB_MAPASYNC: c_uint = 0x0010_0000;
+pub const MDB_NOTLS: c_uint = 0x0020_0000;
+pub const MDB_NOLOCK: c_uint =  0x0040_0000;
+pub const MDB_NORDAHEAD: c_uint = 0x0080_0000;
+pub const MDB_NOMEMINIT: c_uint =  0x0100_0000;
 
 // Embedding should work better for now
 extern "C" {

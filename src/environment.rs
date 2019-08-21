@@ -350,6 +350,7 @@ pub struct Environment {
 }
 
 impl Environment {
+
     pub fn new() -> EnvBuilder {
         EnvBuilder::new()
     }
