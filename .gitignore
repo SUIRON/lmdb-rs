@@ -3,3 +3,4 @@ doc
 target
 /Cargo.lock
 /liblmdb-sys/Cargo.lock
+/.vscode
