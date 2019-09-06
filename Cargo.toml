@@ -1,6 +1,6 @@
 [package]
 name = "lmdb-rs-et"
-version = "0.7.6"
+version = "0.8.0"
 authors = ["Erik van der Tier <mail@erikvandertier.com>", "Valerii Hiora <valerii.hiora@gmail.com>"]
 license = "MIT"
 description = "LMDB bindings"
