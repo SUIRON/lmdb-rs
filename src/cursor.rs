@@ -42,6 +42,7 @@ pub struct Cursor<'c, 'txn> {
     txn: &'c dyn Txn<'txn>,
     db: ffi::MDB_dbi,
     valid_key: bool,
+    valid_value: bool,
 }
 
 
@@ -57,11 +58,13 @@ impl<'c, 'txn> Cursor<'c, 'txn> {
             txn,
             db,
             valid_key: false,
+            valid_value: false,
         })
     }
 
     fn navigate(&mut self, op: ffi::MDB_cursor_op) -> MdbResult<()> {
         self.valid_key = false;
+        self.valid_value = false;
 
         let res = unsafe {
             ffi::mdb_cursor_get(self.handle, &mut self.key_val, &mut self.data_val, op)
@@ -69,12 +72,13 @@ impl<'c, 'txn> Cursor<'c, 'txn> {
         match res {
             ffi::MDB_SUCCESS => {
                 // MDB_SET is the only cursor operation which doesn't
-                // writes back a new value. In this case any access to
+                // write back a new value. In this case any access to
                 // cursor key value should cause a cursor retrieval
                 // to get back pointer to database owned memory instead
                 // of value used to set the cursor as it might be
                 // already destroyed and there is no need to borrow it
                 self.valid_key = op != ffi::MDB_cursor_op::MDB_SET;
+                self.valid_value = op != ffi::MDB_cursor_op::MDB_GET_BOTH_RANGE;
                 Ok(())
             },
             e => Err(MdbError::new_with_code(e))
@@ -102,6 +106,7 @@ impl<'c, 'txn> Cursor<'c, 'txn> {
         let mut original_key = key.to_mdb_value().value;
 
         self.valid_key = false;
+        self.valid_value = false;
 
         let res = unsafe {
             ffi::mdb_cursor_get(self.handle, &mut self.key_val, &mut self.data_val, ffi::MDB_cursor_op::MDB_SET_RANGE)
@@ -114,6 +119,7 @@ impl<'c, 'txn> Cursor<'c, 'txn> {
                 match res {
                     ffi::MDB_SUCCESS => {
                         self.valid_key = true;
+                        self.valid_value = true;
                         return Ok(())
                     },
                     _ => return Err(MdbError::new_with_code(res))
@@ -121,6 +127,7 @@ impl<'c, 'txn> Cursor<'c, 'txn> {
             }
             if res == ffi::MDB_SUCCESS {
                 self.valid_key = true;
+                self.valid_value = true;
                 return Ok(())
             }
         }
@@ -266,7 +273,6 @@ impl<'c, 'txn> Cursor<'c, 'txn> {
         // If key might be invalid simply perform cursor get to be sure
         // it points to database memory instead of user one
         if !self.valid_key {
-            println!("not valid key");
             unsafe {
                 try_mdb!(ffi::mdb_cursor_get(self.handle, &mut self.key_val,
                                              ptr::null_mut(),
@@ -280,6 +286,14 @@ impl<'c, 'txn> Cursor<'c, 'txn> {
     #[inline]
     fn get_plain(&mut self) -> MdbResult<(MdbValue<'c>, MdbValue<'c>)> {
         try!(self.ensure_key_valid());
+        if !self.valid_value && self.valid_key {
+            unsafe {
+                try_mdb!(ffi::mdb_cursor_get(self.handle, ptr::null_mut(),
+                                                &mut self.data_val,
+                                                ffi::MDB_cursor_op::MDB_GET_CURRENT));
+            }
+            self.valid_value = true;
+        }
         let k = MdbValue {value: self.key_val, marker: ::std::marker::PhantomData};
         let v = MdbValue {value: self.data_val, marker: ::std::marker::PhantomData};
 
