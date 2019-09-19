@@ -46,7 +46,7 @@ use std::mem;
 use ffi::{self, MDB_val};
 pub use MdbError::{NotFound, KeyExists, Other, StateError, Corrupted, Panic};
 pub use MdbError::{InvalidPath, TxnFull, CursorFull, PageFull, CacheError};
-use utils::{error_msg};
+use crate::utils::{error_msg};
 
 macro_rules! lift_mdb {
     ($e:expr) => (lift_mdb!($e, ()));

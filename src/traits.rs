@@ -15,7 +15,7 @@
 
 use std::{slice};
 
-use core::MdbValue;
+use crate::core::MdbValue;
 use ffi::MDB_val;
 
 /// `ToMdbValue` is supposed to convert a value to a memory

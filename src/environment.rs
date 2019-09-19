@@ -268,7 +268,7 @@ impl EnvBuilder {
         }
 
         if self.autocreate_dir {
-            try!(EnvBuilder::check_path(&path, self.flags));
+            EnvBuilder::check_path(&path, self.flags)?;
         }
 
         let is_readonly = self.flags.contains(ENV_CREATE_READONLY);
@@ -276,8 +276,8 @@ impl EnvBuilder {
         let res = unsafe {
             // FIXME: revert back once `convert` is stable
             // let c_path = path.as_os_str().to_cstring().unwrap();
-            let path_str = try!(path.as_ref().to_str().ok_or(MdbError::InvalidPath));
-            let c_path = try!(CString::new(path_str).map_err(|_| MdbError::InvalidPath));
+            let path_str = path.as_ref().to_str().ok_or(MdbError::InvalidPath)?;
+            let c_path = CString::new(path_str).map_err(|_| MdbError::InvalidPath)?;
 
             ffi::mdb_env_open(env, c_path.as_ref().as_ptr(), self.flags.bits(),
                               perms as ffi::mdb_mode_t)
@@ -404,7 +404,7 @@ impl Environment {
     /// Get flags of environment, which could be changed after it was opened
     /// use [get_all_flags](#method.get_all_flags) if you need also creation time flags
     pub fn get_flags(&self) -> MdbResult<EnvFlags> {
-        let tmp = try!(self.get_all_flags());
+        let tmp = self.get_all_flags()?;
         Ok(EnvFlags::from_bits_truncate(tmp.bits()))
     }
 
@@ -442,8 +442,8 @@ impl Environment {
     pub fn copy_to_path<P: AsRef<Path>>(&self, path: P) -> MdbResult<()> {
         // FIXME: revert back once `convert` is stable
         // let c_path = path.as_os_str().to_cstring().unwrap();
-        let path_str = try!(path.as_ref().to_str().ok_or(MdbError::InvalidPath));
-        let c_path = try!(CString::new(path_str).map_err(|_| MdbError::InvalidPath));
+        let path_str = path.as_ref().to_str().ok_or(MdbError::InvalidPath)?;
+        let c_path = CString::new(path_str).map_err(|_| MdbError::InvalidPath)?;
 
         unsafe {
             lift_mdb!(ffi::mdb_env_copy(self.env.0, c_path.as_ref().as_ptr()))
@@ -501,7 +501,7 @@ impl Environment {
 
                 let mut txn = {
                     let txflags = if self.is_readonly { ffi::MDB_RDONLY } else { 0 };
-                    try!(self.create_transaction(None, txflags))
+                    self.create_transaction(None, txflags)?
                 };
                 let opt_name = if !db_name.is_empty() {Some(db_name)} else {None};
                 let flags = if force_creation {flags | DB_CREATE} else {flags - DB_CREATE};
@@ -518,7 +518,7 @@ impl Environment {
                 };
 
                 try_mdb!(db_res);
-                try!(txn.commit());
+                txn.commit()?;
 
                 debug!("Caching: {} -> {}", db_name, db);
                 unsafe {
@@ -532,13 +532,13 @@ impl Environment {
 
     /// Opens existing DB
     pub fn get_db(& self, db_name: &str, flags: DbFlags) -> MdbResult<Database> {
-        let db = try!(self._open_db(db_name, flags, false));
+        let db = self._open_db(db_name, flags, false)?;
         Ok(Database::new_with_handle(db))
     }
 
     /// Opens or creates a DB
     pub fn create_db(&self, db_name: &str, flags: DbFlags) -> MdbResult<Database> {
-        let db = try!(self._open_db(db_name, flags, true));
+        let db = self._open_db(db_name, flags, true)?;
         Ok(Database::new_with_handle(db))
     }
 

@@ -1,6 +1,6 @@
 use libc::{c_int, c_uint, };
 use ffi::{self, MDB_val};
-use traits::{ToMdbValue, FromMdbValue};
+use crate::traits::{ToMdbValue, FromMdbValue};
 use std::ptr;
 
 use crate::core::{ MdbError, MdbResult, MdbValue, StateError };
@@ -189,7 +189,7 @@ impl Database {
 
     /// Returns an iterator through keys starting with start_key (>=), start_key is included
     pub fn keyrange_from<'c, 'txn, K: ToMdbValue + 'c>(&'c self, start_key: &'c K, txn: &'c dyn Txn<'txn>) -> MdbResult<CursorIterator<'c, 'txn, CursorFromKeyIter>> {
-        let cursor = try!(self.new_cursor(txn));
+        let cursor = self.new_cursor(txn)?;
         let key_range = CursorFromKeyIter::new(start_key);
         let wrap = CursorIterator::wrap(cursor, key_range);
         Ok(wrap)
@@ -197,7 +197,7 @@ impl Database {
 
     /// Returns an iterator through keys less than end_key, end_key is not included
     pub fn keyrange_to<'c, 'txn, K: ToMdbValue + 'c>(&'c self, end_key: &'c K, txn: &'c dyn Txn<'txn>) -> MdbResult<CursorIterator<'c, 'txn, CursorToKeyIter>> {
-        let cursor = try!(self.new_cursor(txn));
+        let cursor = self.new_cursor(txn)?;
         let key_range = CursorToKeyIter::new(end_key);
         let wrap = CursorIterator::wrap(cursor, key_range);
         Ok(wrap)
@@ -208,7 +208,7 @@ impl Database {
     pub fn keyrange_from_to<'c, 'txn, K: ToMdbValue + 'c>(&'c self, start_key: &'c K, end_key: &'c K, txn: &'c dyn Txn<'txn>)
                                -> MdbResult<CursorIterator<'c, 'txn, CursorKeyRangeIter>>
     {
-        let cursor = try!(self.new_cursor(txn));
+        let cursor = self.new_cursor(txn)?;
         let key_range = CursorKeyRangeIter::new(start_key, end_key, false);
         let wrap = CursorIterator::wrap(cursor, key_range);
         Ok(wrap)
@@ -221,7 +221,7 @@ impl Database {
     pub fn keyrange<'c, 'txn, K: ToMdbValue + 'c>(&'c self, start_key: &'c K, end_key: &'c K, txn: &'c dyn Txn<'txn>)
                                -> MdbResult<CursorIterator<'c, 'txn, CursorKeyRangeIter>>
     {
-        let cursor = try!(self.new_cursor(txn));
+        let cursor = self.new_cursor(txn)?;
         let key_range = CursorKeyRangeIter::new(start_key, end_key, true);
         let wrap = CursorIterator::wrap(cursor, key_range);
         Ok(wrap)
@@ -229,7 +229,7 @@ impl Database {
 
     /// Returns an iterator for all items (i.e. values with same key)
     pub fn item_iter<'c, 'txn, 'db: 'c, K: ToMdbValue>(&'db self, key: &'c K, txn: &'c dyn Txn<'txn>) -> MdbResult<CursorIterator<'c, 'txn, CursorItemIter<'c>>> {
-        let cursor = try!(self.new_cursor(txn));
+        let cursor = self.new_cursor(txn)?;
         let inner_iter = CursorItemIter::<'c>::new(key);
         Ok(CursorIterator::<'c, 'txn>::wrap(cursor, inner_iter))
     }

@@ -4,7 +4,7 @@ use std::cmp::{Ordering};
 use std::ptr;
 use std::mem;
 use ffi::{self};
-use traits::{ToMdbValue, FromMdbValue};
+use crate::traits::{ToMdbValue, FromMdbValue};
 
 use crate::transaction::{ Txn };
 use crate::core::{ MdbError, MdbResult, MdbValue };
@@ -227,7 +227,7 @@ impl<'c, 'txn> Cursor<'c, 'txn> {
 
     /// Retrieves current key/value as tuple
     pub fn get<'a, T: FromMdbValue + 'a, U: FromMdbValue + 'a>(&'a mut self) -> MdbResult<(T, U)> {
-        let (k, v) = try!(self.get_plain());
+        let (k, v) = self.get_plain()?;
 
         unsafe {
             Ok((FromMdbValue::from_mdb_value(mem::transmute(&k)),
@@ -237,7 +237,7 @@ impl<'c, 'txn> Cursor<'c, 'txn> {
 
     /// Retrieves current value
     pub fn get_value<'a, V: FromMdbValue + 'a>(&'a mut self) -> MdbResult<V> {
-        let (_, v) = try!(self.get_plain());
+        let (_, v) = self.get_plain()?;
 
         unsafe {
             Ok(FromMdbValue::from_mdb_value(mem::transmute(&v)))
@@ -246,7 +246,7 @@ impl<'c, 'txn> Cursor<'c, 'txn> {
 
     /// Retrieves current key
     pub fn get_key<'a, K: FromMdbValue + 'a>(&'a mut self) -> MdbResult<K> {
-        let (k, _) = try!(self.get_plain());
+        let (k, _) = self.get_plain()?;
 
         unsafe {
             Ok(FromMdbValue::from_mdb_value(mem::transmute(&k)))
@@ -256,7 +256,7 @@ impl<'c, 'txn> Cursor<'c, 'txn> {
     /// Compares the cursor's current key with the specified other one.
     #[inline]
     fn cmp_key(&mut self, other: &MdbValue) -> MdbResult<Ordering> {
-        let (k, _) = try!(self.get_plain());
+        let (k, _) = self.get_plain()?;
         let mut kval = k.value;
         let cmp = unsafe {
             ffi::mdb_cmp(self.txn.get_handle(), self.db, &mut kval, other as *const MdbValue<'_> as *mut ffi::MDB_val)
@@ -285,7 +285,7 @@ impl<'c, 'txn> Cursor<'c, 'txn> {
 
     #[inline]
     fn get_plain(&mut self) -> MdbResult<(MdbValue<'c>, MdbValue<'c>)> {
-        try!(self.ensure_key_valid());
+        self.ensure_key_valid()?;
         if !self.valid_value && self.valid_key {
             unsafe {
                 try_mdb!(ffi::mdb_cursor_get(self.handle, ptr::null_mut(),
@@ -311,7 +311,7 @@ impl<'c, 'txn> Cursor<'c, 'txn> {
     }
 
     fn set_value<V: ToMdbValue>(&mut self, value: &V, flags: c_uint) -> MdbResult<()> {
-        try!(self.ensure_key_valid());
+        self.ensure_key_valid()?;
         self.data_val = value.to_mdb_value().value;
         lift_mdb!(unsafe {ffi::mdb_cursor_put(self.handle, &mut self.key_val, &mut self.data_val, flags)})
     }
@@ -392,7 +392,7 @@ pub struct CursorItemAccessor<'c, 'k, 'txn, K: 'k> {
 
 impl<'k, 'c: 'k, 'txn, K: ToMdbValue> CursorItemAccessor<'c, 'k, 'txn, K> {
     pub fn get<'a, V: FromMdbValue + 'a>(&'a mut self) -> MdbResult<V> {
-        try!(self.cursor.move_to_key(self.key));
+        self.cursor.move_to_key(self.key)?;
         self.cursor.get_value()
     }
 
@@ -401,12 +401,12 @@ impl<'k, 'c: 'k, 'txn, K: ToMdbValue> CursorItemAccessor<'c, 'k, 'txn, K> {
     }
 
     pub fn del<V: ToMdbValue>(&mut self, v: &V) -> MdbResult<()> {
-        try!(self.cursor.move_to_item(self.key, v));
+        self.cursor.move_to_item(self.key, v)?;
         self.cursor.del_item()
     }
 
     pub fn del_all(&mut self) -> MdbResult<()> {
-        try!(self.cursor.move_to_key(self.key));
+        self.cursor.move_to_key(self.key)?;
         self.cursor.del_all()
     }
 
