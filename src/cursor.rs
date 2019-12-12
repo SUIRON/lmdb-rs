@@ -45,7 +45,6 @@ pub struct Cursor<'c, 'txn> {
     valid_value: bool,
 }
 
-
 impl<'c, 'txn> Cursor<'c, 'txn> {
     pub fn new(txn: &'c dyn Txn<'txn>, db: ffi::MDB_dbi) -> MdbResult<Cursor<'c, 'txn>> {
         debug!("Opening cursor in {}", db);
@@ -96,7 +95,7 @@ impl<'c, 'txn> Cursor<'c, 'txn> {
         self.navigate(op)
     }
 
-    fn move_to_prev<K, V>(&mut self, key: &K, value: Option<&V>) -> MdbResult<()>
+    fn _move_to_prev<K, V>(&mut self, key: &K, value: Option<&V>) -> MdbResult<()>
         where K: ToMdbValue, V: ToMdbValue {
         self.key_val = key.to_mdb_value().value;
         self.data_val = match value {
@@ -160,7 +159,7 @@ impl<'c, 'txn> Cursor<'c, 'txn> {
     /// when the database supports dup-keys this will point the cursor to the last item of
     /// the previous key
     pub fn move_to_lte_key<'k, K: ToMdbValue>(&mut self, key: &'k K) -> MdbResult<()> {
-        self.move_to_prev(key, None::<&MdbValue<'k>>)
+        self._move_to_prev(key, None::<&MdbValue<'k>>)
     }
 
     /// Moves cursor to first entry for key less than
@@ -168,7 +167,7 @@ impl<'c, 'txn> Cursor<'c, 'txn> {
     /// when the database supports dup-keys this will point the cursor to the first item of
     /// the previous key
     pub fn move_to_lte_key_first_item<'k, K: ToMdbValue>(&mut self, key: &'k K) -> MdbResult<()> {
-        match self.move_to_prev(key, None::<&MdbValue<'k>>) {
+        match self._move_to_prev(key, None::<&MdbValue<'k>>) {
             Ok(_) => self.move_to_first_item(),
             Err(e) => Err(e)
         }
@@ -201,6 +200,11 @@ impl<'c, 'txn> Cursor<'c, 'txn> {
     /// with duplicate keys
     pub fn move_to_prev_key(&mut self) -> MdbResult<()> {
         self.navigate(ffi::MDB_cursor_op::MDB_PREV_NODUP)
+    }
+
+    /// Moves cursor to prev item
+    pub fn move_to_prev(&mut self) -> MdbResult<()> {
+        self.navigate(ffi::MDB_cursor_op::MDB_PREV)
     }
 
     pub fn move_to_prev_key_dup(&mut self) -> MdbResult<()> {
@@ -456,7 +460,6 @@ pub trait IterateCursor {
     }
 }
 
-
 #[derive(Debug)]
 pub struct CursorIterator<'c, 'txn, I> {
     inner: I,
@@ -552,7 +555,6 @@ pub struct CursorFromKeyIter<'a> {
     marker: ::std::marker::PhantomData<&'a ()>,
 }
 
-
 impl<'a> CursorFromKeyIter<'a> {
     pub fn new<K: ToMdbValue+'a>(start_key: &'a K) -> CursorFromKeyIter<'a> {
         CursorFromKeyIter {
@@ -580,7 +582,6 @@ pub struct CursorToKeyIter<'a> {
     end_key: MdbValue<'a>,
     marker: ::std::marker::PhantomData<&'a ()>,
 }
-
 
 impl<'a> CursorToKeyIter<'a> {
     pub fn new<K: ToMdbValue+'a>(end_key: &'a K) -> CursorToKeyIter<'a> {
@@ -611,7 +612,6 @@ impl<'iter> IterateCursor for CursorToKeyIter<'iter> {
 #[derive(Debug)]
 pub struct CursorIter;
 
-
 impl<'iter> IterateCursor for CursorIter {
     fn init_cursor<'a, 'b: 'a, 'txn>(&'a self, cursor: & mut Cursor<'b, 'txn>) -> bool {
         cursor.move_to_first().is_ok()
@@ -622,13 +622,11 @@ impl<'iter> IterateCursor for CursorIter {
     }
 }
 
-
 #[derive(Debug)]
 pub struct CursorItemIter<'a> {
     key: MdbValue<'a>,
     marker: ::std::marker::PhantomData<&'a ()>,
 }
-
 
 impl<'a> CursorItemIter<'a> {
     pub fn new<K: ToMdbValue+'a>(key: &'a K) -> CursorItemIter<'a> {
