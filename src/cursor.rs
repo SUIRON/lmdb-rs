@@ -47,7 +47,7 @@ pub struct Cursor<'c, 'txn> {
 
 impl<'c, 'txn> Cursor<'c, 'txn> {
     pub fn new(txn: &'c dyn Txn<'txn>, db: ffi::MDB_dbi) -> MdbResult<Cursor<'c, 'txn>> {
-        debug!("Opening cursor in {}", db);
+        //debug!("Opening cursor in {}", db);
         let mut tmp: *mut ffi::MDB_cursor = std::ptr::null_mut();
         try_mdb!(unsafe { ffi::mdb_cursor_open(txn.get_handle(), db, &mut tmp) });
         Ok(Cursor {
