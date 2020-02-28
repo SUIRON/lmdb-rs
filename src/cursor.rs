@@ -207,6 +207,11 @@ impl<'c, 'txn> Cursor<'c, 'txn> {
         self.navigate(ffi::MDB_cursor_op::MDB_PREV)
     }
 
+    /// Moves cursor to next item
+    pub fn move_to_next(&mut self) -> MdbResult<()> {
+        self.navigate(ffi::MDB_cursor_op::MDB_NEXT)
+    }
+
     pub fn move_to_prev_key_dup(&mut self) -> MdbResult<()> {
         match self.navigate(ffi::MDB_cursor_op::MDB_PREV_NODUP) {
             Ok(_) => self.move_to_first_item(),
