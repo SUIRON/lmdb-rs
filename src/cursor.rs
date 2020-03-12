@@ -34,7 +34,7 @@ impl IsLess for MdbResult<Ordering> {
     }
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct Cursor<'c, 'txn> {
     handle: *mut ffi::MDB_cursor,
     data_val: ffi::MDB_val,
