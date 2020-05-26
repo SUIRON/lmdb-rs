@@ -15,7 +15,7 @@ pub enum TransactionState {
     Invalid,  // Invalid, no further operation possible
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct NativeTransaction<'a> {
     pub handle: *mut ffi::MDB_txn,
     pub env: &'a Environment,
@@ -114,7 +114,7 @@ pub trait Txn<'a>: std::fmt::Debug {
     fn get_state(&self) -> TransactionState;
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct Transaction<'a> {
     inner: NativeTransaction<'a>,
 }
@@ -170,7 +170,7 @@ impl<'a> Transaction<'a> {
 }
 
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct ReadonlyTransaction<'a> {
     inner: NativeTransaction<'a>,
 }
