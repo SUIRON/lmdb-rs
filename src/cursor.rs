@@ -95,13 +95,10 @@ impl<'c, 'txn> Cursor<'c, 'txn> {
         self.navigate(op)
     }
 
-    fn _move_to_prev<K, V>(&mut self, key: &K, value: Option<&V>) -> MdbResult<()>
-        where K: ToMdbValue, V: ToMdbValue {
+    fn _move_to_prev<K>(&mut self, key: &K) -> MdbResult<()>
+        where K: ToMdbValue {
         self.key_val = key.to_mdb_value().value;
-        self.data_val = match value {
-            Some(v) => v.to_mdb_value().value,
-            _ => unsafe {std::mem::zeroed() }
-        };
+        self.data_val = unsafe {std::mem::zeroed()};
         let mut original_key = key.to_mdb_value().value;
 
         self.valid_key = false;
@@ -149,17 +146,17 @@ impl<'c, 'txn> Cursor<'c, 'txn> {
     }
 
     /// Moves cursor to first entry for key greater than
-    /// or equal to ke
+    /// or equal to key
     pub fn move_to_gte_key<'k, K: ToMdbValue>(&mut self, key: &'k K) -> MdbResult<()> {
         self.move_to(key, None::<&MdbValue<'k>>, ffi::MDB_cursor_op::MDB_SET_RANGE)
     }
 
     /// Moves cursor to first entry for key less than
-    /// or equal to ke
+    /// or equal to key
     /// when the database supports dup-keys this will point the cursor to the last item of
     /// the previous key
     pub fn move_to_lte_key<'k, K: ToMdbValue>(&mut self, key: &'k K) -> MdbResult<()> {
-        self._move_to_prev(key, None::<&MdbValue<'k>>)
+        self._move_to_prev(key)
     }
 
     /// Moves cursor to first entry for key less than
@@ -167,8 +164,22 @@ impl<'c, 'txn> Cursor<'c, 'txn> {
     /// when the database supports dup-keys this will point the cursor to the first item of
     /// the previous key
     pub fn move_to_lte_key_first_item<'k, K: ToMdbValue>(&mut self, key: &'k K) -> MdbResult<()> {
-        match self._move_to_prev(key, None::<&MdbValue<'k>>) {
+        match self._move_to_prev(key) {
             Ok(_) => self.move_to_first_item(),
+            Err(e) => Err(e)
+        }
+    }
+
+    /// Moves cursor to first entry for key less than
+    /// or equal to ke
+    /// when the database supports dup-keys this will point the cursor to the first item of
+    /// the previous key
+    pub fn move_to_lte_key_and_item<K, V>(&mut self, key: &K, value: & V) -> MdbResult<()> where K: ToMdbValue + FromMdbValue, V: ToMdbValue + FromMdbValue {
+        match self.move_to_lte_key_first_item(key) {
+            Ok(_) => {
+                let key = self.get_key::<K>()?;
+                self.move_to_lte_item(&key, value)
+            },
             Err(e) => Err(e)
         }
     }
@@ -180,9 +191,29 @@ impl<'c, 'txn> Cursor<'c, 'txn> {
         self.move_to(key, Some(value), ffi::MDB_cursor_op::MDB_GET_BOTH)
     }
 
-    /// Moves cursor to nearest item.
+    /// Moves cursor (for the matching key) to nearest item, greater than or equal to the dup_key.
     pub fn move_to_gte_item<K, V>(&mut self, key: &K, value: & V) -> MdbResult<()> where K: ToMdbValue, V: ToMdbValue {
         self.move_to(key, Some(value), ffi::MDB_cursor_op::MDB_GET_BOTH_RANGE)
+    }
+
+    /// Moves cursor (for the matching key) to nearest item, less than or equal to the dup_key.
+    pub fn move_to_lte_item<K, V>(&mut self, key: &K, value: &V) -> MdbResult<()> where K: ToMdbValue + FromMdbValue, V: ToMdbValue + FromMdbValue {
+        match self.move_to_gte_item(key, value) {
+            Ok(_) | Err(MdbError::NotFound) => {
+                let mut old_value = value.to_mdb_value().value;
+                match self.get_value::<V>() {
+                    Ok(val) => if unsafe { ffi::mdb_cmp(self.txn.get_handle(), self.db, &mut old_value, &mut val.to_mdb_value().value) < 0 } {
+                        return self.move_to_prev_item();
+                    },
+                    Err(MdbError::NotFound) => return self.move_to_prev_item(),
+                    Err(e) => return Err(e)
+                }
+                self.valid_key = false;
+                self.ensure_key_valid()?;
+                Ok(())
+            },
+            Err(e) => Err(e)
+        }
     }
 
     /// Moves cursor to next key, i.e. skip items

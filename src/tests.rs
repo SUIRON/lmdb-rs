@@ -7,11 +7,11 @@ use std::thread;
 
 use libc::c_int;
 
-use core::{MdbValue, KeyExists, MdbError};
-use environment::{self, EnvBuilder, ENV_NO_MEM_INIT, ENV_NO_META_SYNC };
-use database::{self, DbFlags};
+use crate::core::{MdbValue, KeyExists, MdbError};
+use crate::environment::{self, EnvBuilder, ENV_NO_MEM_INIT, ENV_NO_META_SYNC };
+use crate::database::{self, DbFlags};
 use ffi::MDB_val;
-use traits::FromMdbValue;
+use crate::traits::FromMdbValue;
 
 const USER_DIR: u32 = 0o777;
 static TEST_ROOT_DIR: &'static str = "test-dbs";
@@ -225,7 +225,10 @@ fn test_resize_map() {
         let txn = env.new_transaction().unwrap();
         {
             let test_key = format!("key_{}", key_idx);
-            try!(db.set(&test_key, &(&test_data[..]), &txn));
+            match db.set(&test_key, &(&test_data[..]), &txn) {
+                Ok(_) => (),
+                Err(e) => return Err(e)
+            }
         }
         key_idx += 1;
         txn.commit()
@@ -234,7 +237,7 @@ fn test_resize_map() {
     loop {
         match write_closure() {
             Err(MdbError::Other(MDB_MAP_FULL, _)) => { break; }
-            Err(_) => panic!("unexpected db error"),
+            Err(e) => panic!("unexpected db error {}", e),
             _ => {} // continue
         }
     }
@@ -326,6 +329,7 @@ fn test_cursor_le() {
 
 }
 
+
 #[test]
 fn test_cursor_le_dup() {
     let env = EnvBuilder::new()
@@ -359,7 +363,67 @@ fn test_cursor_le_dup() {
     search_key = 25;
     assert!(cursor.move_to_lte_key_first_item(&search_key).is_ok());
     assert_eq!((20, 201), cursor.get::<u32, u32>().unwrap());
+
+    search_key = 10;
+    let mut dup_key = 102;
+    assert!(cursor.move_to_lte_key_and_item(&search_key, &dup_key).is_ok());
+    assert_eq!((10, 102), cursor.get::<u32, u32>().unwrap());
+
+    search_key = 10;
+    dup_key = 103;
+    assert!(cursor.move_to_lte_key_and_item(&search_key, &dup_key).is_ok());
+    assert_eq!((10, 102), cursor.get::<u32, u32>().unwrap());
+
+    search_key = 12;
+    dup_key = 103;
+    assert!(cursor.move_to_lte_key_and_item(&search_key, &dup_key).is_ok());
+    assert_eq!((10, 102), cursor.get::<u32, u32>().unwrap());
+
+    search_key = 12;
+    dup_key = 102;
+    assert!(cursor.move_to_lte_key_and_item(&search_key, &dup_key).is_ok());
+    assert_eq!((10, 102), cursor.get::<u32, u32>().unwrap());
+
 }
+
+#[test]
+fn test_cursor_ge_dup() {
+    let env = EnvBuilder::new()
+        .max_dbs(5)
+        .open(&next_path(), USER_DIR)
+        .unwrap();
+
+    let db = env.create_db("test_ge_dup", database::DB_INT_KEY | database::DB_ALLOW_DUPS | database::DB_ALLOW_INT_DUPS).unwrap();
+    let txn = env.new_transaction().unwrap();
+
+    let mut cursor = db.new_cursor(&txn).unwrap();
+
+    let test_key1 = 10;
+    let test_key2 = 20;
+    let key1_val1=100;
+    let key1_val2=110;
+    let key2_val1=200;
+    let key2_val2=210;
+    let _ = db.set(&test_key1, &key1_val1, &txn);
+    let _ = db.set(&test_key1, &key1_val2, &txn);
+    let _ = db.set(&test_key2, &key2_val1, &txn);
+    let _ = db.set(&test_key2, &key2_val2, &txn);
+    
+    let mut search_key = 10;
+    let mut dup_key = 99;
+    assert!(cursor.move_to_gte_item(&search_key, &dup_key).is_ok());
+    assert_eq!((10, 100), cursor.get::<u32, u32>().unwrap());
+    
+    search_key = 10;
+    dup_key = 105;
+    assert!(cursor.move_to_gte_item(&search_key, &dup_key).is_ok());
+    assert_eq!((10, 110), cursor.get::<u32, u32>().unwrap());
+
+    search_key = 20;
+    assert!(cursor.move_to_gte_item(&search_key, &dup_key).is_ok());
+    assert_eq!((20, 200), cursor.get::<u32, u32>().unwrap());
+}
+
 
 #[test]
 fn test_cursors() {
