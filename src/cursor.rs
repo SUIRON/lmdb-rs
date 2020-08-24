@@ -202,7 +202,7 @@ impl<'c, 'txn> Cursor<'c, 'txn> {
             Ok(_) | Err(MdbError::NotFound) => {
                 let mut old_value = value.to_mdb_value().value;
                 match self.get_value::<V>() {
-                    Ok(val) => if unsafe { ffi::mdb_cmp(self.txn.get_handle(), self.db, &mut old_value, &mut val.to_mdb_value().value) < 0 } {
+                    Ok(val) => if unsafe { ffi::mdb_dcmp(self.txn.get_handle(), self.db, &mut old_value, &mut val.to_mdb_value().value) < 0 } {
                         return self.move_to_prev_item();
                     },
                     Err(MdbError::NotFound) => return self.move_to_prev_item(),
