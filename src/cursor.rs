@@ -178,7 +178,9 @@ impl<'c, 'txn> Cursor<'c, 'txn> {
         match self.move_to_lte_key_first_item(key) {
             Ok(_) => {
                 let key = self.get_key::<K>()?;
-                self.move_to_lte_item(&key, value)
+                self.move_to_lte_item(&key, value)?;
+                self.valid_key = false;
+                self.ensure_key_valid()
             },
             Err(e) => Err(e)
         }
@@ -208,8 +210,6 @@ impl<'c, 'txn> Cursor<'c, 'txn> {
                     Err(MdbError::NotFound) => return self.move_to_prev_item(),
                     Err(e) => return Err(e)
                 }
-                self.valid_key = false;
-                self.ensure_key_valid()?;
                 Ok(())
             },
             Err(e) => Err(e)
