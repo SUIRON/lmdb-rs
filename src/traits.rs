@@ -141,7 +141,7 @@ macro_rules! mdb_for_primitive {
             }
         }
 
-        )
+    )
 }
 
 mdb_for_primitive!(u8);

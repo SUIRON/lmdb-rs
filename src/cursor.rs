@@ -174,7 +174,7 @@ impl<'c, 'txn> Cursor<'c, 'txn> {
     /// or equal to ke
     /// when the database supports dup-keys this will point the cursor to the first item of
     /// the previous key
-    pub fn move_to_lte_key_and_item<K, V>(&mut self, key: &K, value: & V) -> MdbResult<()> where K: ToMdbValue + FromMdbValue, V: ToMdbValue + FromMdbValue {
+    pub fn move_to_lte_key_and_item<'a, K, V>(&'a mut self, key: &K, value: &V) -> MdbResult<()> where K: ToMdbValue + FromMdbValue + 'a, V: ToMdbValue + FromMdbValue + 'a {
         match self.move_to_lte_key_first_item(key) {
             Ok(_) => {
                 let key = self.get_key::<K>()?;
@@ -197,7 +197,7 @@ impl<'c, 'txn> Cursor<'c, 'txn> {
     }
 
     /// Moves cursor (for the matching key) to nearest item, less than or equal to the dup_key.
-    pub fn move_to_lte_item<K, V>(&mut self, key: &K, value: &V) -> MdbResult<()> where K: ToMdbValue + FromMdbValue, V: ToMdbValue + FromMdbValue {
+    pub fn move_to_lte_item<'a, K, V>(&'a mut self, key: &K, value: &V) -> MdbResult<()> where K: ToMdbValue + FromMdbValue+'a, V: ToMdbValue + FromMdbValue+'a {
         match self.move_to_gte_item(key, value) {
             Ok(_) | Err(MdbError::NotFound) => {
                 let mut old_value = value.to_mdb_value().value;
