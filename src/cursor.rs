@@ -180,7 +180,8 @@ impl<'c, 'txn> Cursor<'c, 'txn> {
                 let key = self.get_key::<K>()?;
                 self.move_to_lte_item(&key, value)?;
                 self.valid_key = false;
-                self.ensure_key_valid()
+                self.valid_value = false;
+                Ok(())
             },
             Err(e) => Err(e)
         }
@@ -195,7 +196,9 @@ impl<'c, 'txn> Cursor<'c, 'txn> {
 
     /// Moves cursor (for the matching key) to nearest item, greater than or equal to the dup_key.
     pub fn move_to_gte_item<K, V>(&mut self, key: &K, value: & V) -> MdbResult<()> where K: ToMdbValue, V: ToMdbValue {
-        self.move_to(key, Some(value), ffi::MDB_cursor_op::MDB_GET_BOTH_RANGE)
+        self.move_to(key, Some(value), ffi::MDB_cursor_op::MDB_GET_BOTH_RANGE)?;
+        self.valid_key = false;
+        Ok(())
     }
 
     /// Moves cursor (for the matching key) to nearest item, less than or equal to the dup_key.
