@@ -187,6 +187,19 @@ impl<'c, 'txn> Cursor<'c, 'txn> {
         }
     }
 
+    pub fn move_to_gte_key_and_item<'a, K, V>(&'a mut self, key: &K, value: &V) -> MdbResult<()> where K: ToMdbValue + FromMdbValue + 'a, V: ToMdbValue + FromMdbValue + 'a {
+        match self.move_to_gte_key(key) {
+            Ok(_) => {
+                let key = self.get_key::<K>()?;
+                self.move_to_gte_item(&key, value)?;
+                self.valid_key = false;
+                self.valid_value = false;
+                Ok(())
+            },
+            Err(e) => Err(e)
+        }
+    }
+
     /// Moves cursor to specific item (for example, if cursor
     /// already points to a correct key and you need to delete
     /// a specific item through cursor)

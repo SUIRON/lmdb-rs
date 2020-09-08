@@ -450,7 +450,7 @@ impl Environment {
         }
     }
 
-    fn create_transaction(&self, parent: Option<NativeTransaction>, flags: c_uint) -> MdbResult<NativeTransaction> {
+    fn create_transaction<'a>(&'a self, parent: Option<NativeTransaction<'a>>, flags: c_uint) -> MdbResult<NativeTransaction<'a>> {
         let mut handle: *mut ffi::MDB_txn = ptr::null_mut();
         let parent_handle = match parent {
             Some(t) => t.handle,
@@ -464,7 +464,7 @@ impl Environment {
     /// Creates a new read-write transaction
     ///
     /// Use `get_reader` to get much faster lock-free alternative
-    pub fn new_transaction(&self) -> MdbResult<Transaction> {
+    pub fn new_transaction<'a>(&'a self) -> MdbResult<Transaction<'a>> {
         if self.is_readonly {
             return Err(MdbError::StateError("Error: creating read-write transaction in read-only environment".to_owned()))
         }
@@ -473,13 +473,13 @@ impl Environment {
     }
 
     /// Creates a readonly transaction
-    pub fn get_reader(&self) -> MdbResult<ReadonlyTransaction> {
+    pub fn get_reader<'a>(&'a self) -> MdbResult<ReadonlyTransaction<'a>> {
         self.create_transaction(None, ffi::MDB_RDONLY)
             .and_then(|txn| Ok(ReadonlyTransaction::new_with_native(txn)))
     }
 
     fn _open_db(&self, db_name: & str, flags: DbFlags, force_creation: bool) -> MdbResult<ffi::MDB_dbi> {
-        debug!("Opening {} (create={}, read_only={})", db_name, force_creation, self.is_readonly);
+        // debug!("Opening {} (create={}, read_only={})", db_name, force_creation, self.is_readonly);
         // From LMDB docs for mdb_dbi_open:
         //
         // This function must not be called from multiple concurrent
@@ -494,7 +494,7 @@ impl Environment {
 
                 unsafe {
                     if let Some(db) = (*cache).get(db_name) {
-                        debug!("Cached value for {}: {}", db_name, *db);
+                        // debug!("Cached value for {}: {}", db_name, *db);
                         return Ok(*db);
                     }
                 }
@@ -520,7 +520,7 @@ impl Environment {
                 try_mdb!(db_res);
                 txn.commit()?;
 
-                debug!("Caching: {} -> {}", db_name, db);
+                // debug!("Caching: {} -> {}", db_name, db);
                 unsafe {
                     (*cache).insert(db_name.to_owned(), db);
                 };

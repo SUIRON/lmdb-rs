@@ -40,7 +40,7 @@ impl<'a> NativeTransaction<'a> {
 
     pub fn commit(&mut self) -> MdbResult<()> {
         assert_state_eq!(txn, self.state, TransactionState::Normal);
-        debug!("commit txn");
+        // debug!("commit txn");
         self.state = if self.is_readonly() {
             TransactionState::Released
         } else {
@@ -54,7 +54,7 @@ impl<'a> NativeTransaction<'a> {
         if self.state != TransactionState::Normal {
             debug!("Can't abort transaction: current state {:?}", self.state)
         } else {
-            debug!("abort txn");
+            // debug!("abort txn");
             unsafe { ffi::mdb_txn_abort(self.handle); }
             self.state = if self.is_readonly() {
                 TransactionState::Released
@@ -92,7 +92,7 @@ impl<'a> NativeTransaction<'a> {
     /// Used in Drop to switch state
     fn silent_abort(&mut self) {
         if self.state == TransactionState::Normal {
-            debug!("silent abort");
+            // debug!("silent abort");
             unsafe {ffi::mdb_txn_abort(self.handle);}
             self.state = TransactionState::Invalid;
         }
