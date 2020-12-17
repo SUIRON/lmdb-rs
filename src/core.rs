@@ -122,7 +122,7 @@ impl std::fmt::Display for MdbError {
         match &self {
             NotFound | KeyExists | TxnFull |
             CursorFull | PageFull | Corrupted |
-            Panic | InvalidPath | CacheError => write!(fmt, "{}", self.description()),
+            Panic | InvalidPath | CacheError => write!(fmt, "{}", self.to_string()),
             StateError(ref msg) => write!(fmt, "{}", msg),
             Other(code, ref msg) => write!(fmt, "{}: {}", code, msg)
         }

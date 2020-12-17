@@ -215,7 +215,7 @@ impl<'c, 'txn> Cursor<'c, 'txn> {
     }
 
     /// Moves cursor (for the matching key) to nearest item, less than or equal to the dup_key.
-    pub fn move_to_lte_item<'a, K, V>(&'a mut self, key: &K, value: &V) -> MdbResult<()> where K: ToMdbValue + FromMdbValue+'a, V: ToMdbValue + FromMdbValue+'a {
+    pub fn move_to_lte_item<'a, K, V>(&'a mut self, key: &K, value: &V) -> MdbResult<()> where K: ToMdbValue, V: ToMdbValue + FromMdbValue+'a {
         match self.move_to_gte_item(key, value) {
             Ok(_) | Err(MdbError::NotFound) => {
                 let mut old_value = value.to_mdb_value().value;

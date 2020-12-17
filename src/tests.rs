@@ -422,6 +422,11 @@ fn test_cursor_ge_dup() {
     search_key = 20;
     assert!(cursor.move_to_gte_item(&search_key, &dup_key).is_ok());
     assert_eq!((20, 200), cursor.get::<u32, u32>().unwrap());
+
+    search_key = 20;
+    dup_key = 205;
+    assert!(cursor.move_to_lte_item(&search_key, &dup_key).is_ok());
+    assert_eq!((20, 200), cursor.get::<u32, u32>().unwrap());
 }
 
 
