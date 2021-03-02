@@ -46,7 +46,7 @@ bitflags! {
 }
 
 /// Database
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct Database {
     pub handle: ffi::MDB_dbi,
 }
